@@ -8,6 +8,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { parseAIResponse } from '@/lib/parser';
 import { generateProjectIndex } from '@/lib/indexer';
+import { ToolService } from '@/services/ToolService';
 
 import { useRouter } from "next/navigation";
 
@@ -19,6 +20,7 @@ type AgentMode = 'build' | 'fix' | 'refactor' | 'ui' | 'deploy';
 const cleanAIMessage = (text: string) => {
     return text
         .replace(/<bolt_plan>[\s\S]*?<\/bolt_plan>/gi, '') // Remove structured plan tags
+        .replace(/<bolt_tool[\s\S]*?<\/bolt_tool>/gi, '') // Remove tool call tags
         .replace(/###\s*FILE:?\s*[^\n]*\s*```[\s\S]*?```/gi, '') // Remove file path markers AND their code blocks
         .replace(/###\s*FILE:?\s*[^\n]*/gi, '') // Cleanup any stray file markers
         .replace(/###\s*PLAN/gi, '**STEP-BY-STEP PLAN**') // Format plan header nicely
@@ -143,12 +145,16 @@ RESPONSE STRUCTURE:
    - Mandatory: wrap your structured plan in <bolt_plan> tags.
    - Each step should be: <step id="..." title="..." description="..." />
    - Keep steps concise but clear.
-3. **Implementation**: Mandatory: use "### FILE: path/to/file" followed by full code blocks for every change.
+3. **Implementation**:
+   - Use "### FILE: path/to/file" followed by full code blocks for any code changes.
+   - Use "<bolt_tool type='...'>description\ncontent</bolt_tool>" for environment actions.
+     - types: 'shell' (commands), 'npm' (installing packages), 'search' (grep).
 4. **Conclusion**: Very short wrap-up.
 
 STRICT RULES:
 - Never skip the <bolt_plan> and <step> tags for any complex task.
 - Provide full file contents for files.
+- If you need to install a package, use the <bolt_tool type="npm"> tool.
 - Be technical but extremely concise.`;
 
             const response = await fetch('/api/chat', {
@@ -216,6 +222,17 @@ STRICT RULES:
                 changes.forEach((change: any) => {
                     useBuilderStore.getState().setPendingFile(change.path, change.content);
                 });
+            }
+
+            // Execute any tool calls requested by the AI
+            const toolCalls = ToolService.parseToolCalls(fullContent);
+            for (const tool of toolCalls) {
+                try {
+                    console.log(`[Agent] Automatically executing tool: ${tool.description}`);
+                    await ToolService.execute(tool);
+                } catch (err) {
+                    console.error(`[Agent] Tool execution failed: ${err}`);
+                }
             }
 
             // AUTO-SAVE LOGIC
@@ -420,6 +437,23 @@ STRICT RULES:
                                                         </div>
                                                     ))}
                                                 </div>
+                                            </div>
+                                        )}
+
+                                        {/* Tool Activity Logs */}
+                                        {msg.role === 'assistant' && msg.content.includes('<bolt_tool') && (
+                                            <div className="mt-2 space-y-1">
+                                                {ToolService.parseToolCalls(msg.content).map((tool, idx) => (
+                                                    <div key={idx} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-indigo-500/5 border border-indigo-500/10 text-[10px] text-indigo-300">
+                                                        <Zap className="w-3 h-3 text-indigo-400" />
+                                                        <span className="font-bold uppercase tracking-tight opacity-60">{tool.type}</span>
+                                                        <span className="flex-1 truncate italic">{tool.description}</span>
+                                                        <div className="flex items-center gap-1.5 ml-2">
+                                                            <div className="w-1 h-1 rounded-full bg-indigo-400 animate-pulse" />
+                                                            <span className="font-black uppercase tracking-widest text-[8px] opacity-40">Active</span>
+                                                        </div>
+                                                    </div>
+                                                ))}
                                             </div>
                                         )}
 
