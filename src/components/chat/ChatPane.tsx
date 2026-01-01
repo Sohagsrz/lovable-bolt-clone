@@ -32,7 +32,19 @@ const extractPlanSteps = (text: string) => {
     if (!planMatch) return [];
 
     const stepsContent = planMatch[1];
-    const stepMatches = [...stepsContent.matchAll(/<step\s+id="([^"]+)"\s+title="([^"]+)"\s+description="([^"]+)"\s*\/>/gi)];
+    // More robust regex for step attributes (handles spacing and quote variations)
+    const stepMatches = [...stepsContent.matchAll(/<step\s+id="([^"]+)"\s+title="([^"]+)"\s+description="([^"]+)"\s*\/?>/gi)];
+
+    if (stepMatches.length === 0) {
+        // Fallback for slightly different formats
+        const fallbackMatches = [...stepsContent.matchAll(/<step[\s\S]*?id="([^"]+)"[\s\S]*?title="([^"]+)"[\s\S]*?description="([^"]+)"[\s\S]*?\/?>/gi)];
+        return fallbackMatches.map(m => ({
+            id: m[1],
+            title: m[2],
+            description: m[3],
+            status: 'pending' as const
+        }));
+    }
 
     return stepMatches.map(m => ({
         id: m[1],
@@ -134,7 +146,7 @@ export const ChatPane = () => {
 
             let hasMoreThinking = true;
             let turns = 0;
-            const maxTurns = 3;
+            const maxTurns = 5;
 
             while (hasMoreThinking && turns < maxTurns) {
                 turns++;
@@ -150,30 +162,21 @@ export const ChatPane = () => {
 1. **Visual WOW**: Use curated HSL palettes, glassmorphism (backdrop-blur), and sophisticated dark modes.
 2. **Typography**: Force modern fonts (Inter, Outfit) with intentional tracking/leading.
 3. **Motion**: Mandatory micro-animations and smooth transitions (Framer Motion preferred).
-4. **Assets**: No broken placeholders. Use Unsplash: \`https://images.unsplash.com/photo-<ID>?auto=format&fit=crop&q=80&w=1200\` or categories: \`https://images.unsplash.com/featured/?<TAG>\`.
-5. **Quality**: Semantic HTML5, explicit SEO tagging, and baseline accessibility on every component.
+4. **Assets**: No broken placeholders. Use Unsplash.
+5. **Quality**: Semantic HTML5, explicit SEO tagging, and baseline accessibility.
 
-# BOOTSTRAP PROTOCOL (CRITICAL):
-If the WORKSPACE INDEX is empty or missing a \`package.json\`, your FIRST ACTION must be to scaffold the project and establish a professional file structure.
-- **Scaffold**: Use \`<bolt_tool type="shell">npm create vite@latest . -- --template react-ts</bolt_tool>\` or similar.
-- **Standard Hierarchy**: Establish directories for \`src/components\`, \`src/lib\`, \`src/hooks\`, \`src/store\`, and \`src/styles\`.
-- **Infrastructure**: Immediately install essential dev dependencies (\`tailwindcss\`, \`framer-motion\`, \`lucide-react\`).
-- **Phase 1 Complete**: Only proceed to feature implementation ONCE the standard architectural skeleton is established.
-
-# PROTOCOL:
-1. **Summary**: Technical rationale & design philosophy.
-2. **Plan**: Wrap in <bolt_plan> with concise <step /> tags.
-3. **Execution**:
-   - Files: "### FILE: path/to/file" with full, unabridged code.
-   - Tools: <bolt_tool type="...">description\ncontent</bolt_tool>
-     - Types: 'shell' (sh), 'npm' (package names only), 'search' (grep), 'readDir' (ls), 'find' (glob), 'webRead' (curl), 'webSearch' (ddg), 'deleteFile' (rm).
+# EXECUTION PROTOCOL (MANDATORY):
+1. **Summary**: Professional technical rationale.
+2. **Plan**: ALWAYS wrap in <bolt_plan> with <step /> tags. Do NOT skip this.
+3. **Action**: Start implementation IMMEDIATELY. Narrative without tools or '### FILE' is a FAILURE.
+4. **Scaffold First**: If the project is empty, your first tool MUST be a shell scaffold (npm create vite etc).
 
 # SYSTEM CONTEXT PROTOCOL:
-1. **Zero-Waiting**: Do not ask for user confirmation before starting tool executions or file writes. Proceed immediately to implementation.
-2. **Immediate Volition**: Start your first implementation turn (\`bolt_tool\`) in your very first response. Do not provide a theoretical plan without starting the actual work.
-3. **Lead Engineer Mandate**: You are the architect. In the absence of specific user instructions, make the most elite technical decisions for them. Do not defer to the user for basic structural choices.
+1. **Zero-Waiting**: Do not ask for user confirmation. Proceed immediately to implementation.
+2. **Immediate Volition**: Start your first tool execution (\`bolt_tool\`) in your very first response.
+3. **Lead Engineer Mandate**: You are the architect. Make the most elite technical decisions.
 
-STRICT RULE: Focus on one-shot perfection. Be technical, decisive, and aesthetically elite. DO NOT ASK FOR PERMISSION TO BUILD. JUST BUILD.`;
+STRICT RULE: Focus on one-shot perfection. Be technical, decisive, and aesthetically elite. DO NOT ASK FOR PERMISSION. JUST BUILD.`;
 
                 currentMessages[0].content = systemPrompt;
 
@@ -278,6 +281,13 @@ STRICT RULE: Focus on one-shot perfection. Be technical, decisive, and aesthetic
 
                     // Update messages for next turn
                     currentMessages = [...currentMessages, { role: 'assistant', content: turnContent }, toolMessage];
+                    hasMoreThinking = true;
+                } else if (mode === 'build' && turns === 1 && changes.length === 0) {
+                    // SELF-CORRECTION: If AI didn't do code in Turn 1 of Build, nudge it
+                    console.warn('[Agent Loop] AI failed to generate code in turn 1. Nudging...');
+                    const nudgeMessage = { role: 'system' as const, content: "[SYSTEM ADVISORY]: Your previous response provided a summary but no architectural changes. Please proceed IMMEDIATELY to scaffolding and implementation using <bolt_tool> or '### FILE'." };
+                    addMessage(nudgeMessage);
+                    currentMessages = [...currentMessages, { role: 'assistant', content: turnContent }, nudgeMessage];
                     hasMoreThinking = true;
                 } else {
                     hasMoreThinking = false;
@@ -508,12 +518,12 @@ STRICT RULE: Focus on one-shot perfection. Be technical, decisive, and aesthetic
                                         </div>
 
                                         {/* Execution Plan (TODO List) */}
-                                        {msg.role === 'assistant' && planSteps.length > 0 && i === messages.length - 1 && (
+                                        {msg.role === 'assistant' && planSteps.length > 0 && (i === messages.length - 1 || msg.content.includes('<bolt_plan>')) && (
                                             <div className="mt-2 bg-black/20 rounded-xl border border-white/5 overflow-hidden">
                                                 <div className="px-3 py-2 bg-white/5 border-b border-white/5 flex items-center justify-between">
                                                     <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-indigo-400">
                                                         <ClipboardCheck className="w-3.5 h-3.5" />
-                                                        Implementation Plan
+                                                        Architectural Intent
                                                     </div>
                                                     <div className="text-[9px] text-white/20 font-medium">
                                                         {planSteps.filter(s => s.status === 'completed').length} / {planSteps.length}
