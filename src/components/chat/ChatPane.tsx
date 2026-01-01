@@ -166,7 +166,7 @@ If the WORKSPACE INDEX is empty or missing a \`package.json\`, your FIRST ACTION
 3. **Execution**:
    - Files: "### FILE: path/to/file" with full, unabridged code.
    - Tools: <bolt_tool type="...">description\ncontent</bolt_tool>
-     - Types: 'shell' (sh), 'npm' (pkg), 'search' (grep), 'readDir' (ls), 'find' (glob), 'webRead' (curl), 'webSearch' (ddg), 'deleteFile' (rm).
+     - Types: 'shell' (sh), 'npm' (package names only), 'search' (grep), 'readDir' (ls), 'find' (glob), 'webRead' (curl), 'webSearch' (ddg), 'deleteFile' (rm).
 
 # SYSTEM CONTEXT PROTOCOL:
 1. **Zero-Waiting**: Do not ask for user confirmation before starting tool executions or file writes. Proceed immediately to implementation.

@@ -50,9 +50,10 @@ export class ToolService {
             case 'shell':
                 return await this.executeShell(action.content);
             case 'npm':
-                return await this.executeShell(`npm install ${action.content} `);
+                const pkgs = action.content.replace(/^npm install\s+/, '').trim();
+                return await this.executeShell(`npm install --no-fund --no-audit ${pkgs}`);
             case 'search':
-                return await this.executeShell(`grep - r "${action.content}".`);
+                return await this.executeShell(`grep -r "${action.content}" .`);
             case 'file':
                 try {
                     return await wc.fs.readFile(action.content, 'utf-8');
