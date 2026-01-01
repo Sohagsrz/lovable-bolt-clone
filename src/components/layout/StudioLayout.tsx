@@ -8,7 +8,7 @@ import { ChatPane } from '@/components/chat/ChatPane';
 import { PreviewPane } from '@/components/editor/PreviewPane';
 import { PlanPane } from '@/components/plan/PlanPane';
 import { FileExplorer } from '@/components/editor/FileExplorer';
-import { MessageSquare, Code2, Play, Menu, Sidebar as SidebarIcon, ChevronRight } from 'lucide-react';
+import { MessageSquare, Code2, Play, Menu, Sidebar as SidebarIcon, ChevronRight, Sparkles } from 'lucide-react';
 import { useBuilderStore } from '@/store/useBuilderStore';
 
 export const ResizeHandle = ({ className = "" }: { className?: string }) => (
