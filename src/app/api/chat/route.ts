@@ -28,13 +28,13 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { messages } = await req.json();
-        const userId = (session.user as any).id;
+        const { messages, mode } = await req.json();
+        const userId = session.user.id;
 
         // Usage limiting logic
         if (userId) {
             const user = await prisma.user.findUnique({
-                where: { id: userId as string },
+                where: { id: userId },
                 select: { usageCount: true, usageLimit: true }
             });
             if (user && user.usageCount >= user.usageLimit) {
@@ -42,13 +42,13 @@ export async function POST(req: Request) {
             }
 
             await prisma.user.update({
-                where: { id: userId as string },
+                where: { id: userId },
                 data: { usageCount: { increment: 1 } }
             });
         }
 
         const selectedModel = selectSmartModel(messages);
-        console.log(`Smart Model Selected: ${selectedModel}`);
+        console.log(`[Chat] Mode: ${mode}, Model: ${selectedModel}`);
 
         // Proxy request to local copilot with streaming
         const response = await fetch('http://localhost:4141/v1/chat/completions', {

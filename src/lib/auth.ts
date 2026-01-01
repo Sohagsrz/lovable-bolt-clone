@@ -57,16 +57,20 @@ export const authOptions: NextAuthOptions = {
         jwt: async ({ token, user }) => {
             if (user) {
                 token.id = user.id;
-                token.usageCount = (user as any).usageCount;
-                token.usageLimit = (user as any).usageLimit;
+                token.usageCount = user.usageCount;
+                token.usageLimit = user.usageLimit;
+                token.role = user.role;
+                token.plan = user.plan;
             }
             return token;
         },
         session: async ({ session, token }) => {
             if (session.user) {
-                (session.user as any).id = token.id;
-                (session.user as any).usageCount = token.usageCount;
-                (session.user as any).usageLimit = token.usageLimit;
+                session.user.id = token.id;
+                session.user.usageCount = token.usageCount;
+                session.user.usageLimit = token.usageLimit;
+                session.user.role = token.role;
+                session.user.plan = token.plan;
             }
             return session;
         },

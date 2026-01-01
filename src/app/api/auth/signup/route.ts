@@ -6,9 +6,26 @@ export async function POST(req: Request) {
     try {
         const { email, name, password } = await req.json();
 
+        // 1. Basic validation
         if (!email || !password) {
             return NextResponse.json(
                 { error: "Email and password are required" },
+                { status: 400 }
+            );
+        }
+
+        // 2. Format validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return NextResponse.json(
+                { error: "Invalid email format" },
+                { status: 400 }
+            );
+        }
+
+        if (password.length < 6) {
+            return NextResponse.json(
+                { error: "Password must be at least 6 characters" },
                 { status: 400 }
             );
         }

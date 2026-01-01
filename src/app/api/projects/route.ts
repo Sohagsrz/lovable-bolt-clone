@@ -16,7 +16,7 @@ export async function POST(req: Request) {
         const project = await prisma.project.create({
             data: {
                 name,
-                userId: (session.user as any).id,
+                userId: session.user.id,
                 files: {
                     create: files.map((f: any) => ({
                         path: f.path,
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
                 },
                 chats: {
                     create: {
-                        userId: (session.user as any).id,
+                        userId: session.user.id,
                         messages: {
                             create: messages.map((m: any) => ({
                                 role: m.role,
@@ -64,38 +64,74 @@ export async function PUT(req: Request) {
 
         // Check ownership
         const existing = await prisma.project.findUnique({
-            where: { id, userId: (session.user as any).id }
+            where: { id, userId: session.user.id }
         });
 
         if (!existing) {
             return NextResponse.json({ error: 'Not Found' }, { status: 404 });
         }
 
-        // Update project (using a transaction for atomic file updates)
-        await prisma.$transaction([
-            // Update name
-            prisma.project.update({
+        // Update project (using a transaction for atomic file and chat updates)
+        await prisma.$transaction(async (tx) => {
+            // 1. Update project metadata
+            await tx.project.update({
                 where: { id },
                 data: { name, updatedAt: new Date() }
-            }),
-            // Delete old files and create new ones (simplest for now)
-            prisma.projectFile.deleteMany({ where: { projectId: id } }),
-            prisma.projectFile.createMany({
+            });
+
+            // 2. Refresh files: delete old and create new
+            await tx.projectFile.deleteMany({ where: { projectId: id } });
+            await tx.projectFile.createMany({
                 data: files.map((f: any) => ({
                     projectId: id,
                     path: f.path,
                     content: f.content,
                     language: f.path.split('.').pop() || 'text'
                 }))
-            }),
-            // Update chat (find the latest chat and append or recreate)
-            // For now, let's keep it simple and just return the project id
-        ]);
+            });
+
+            // 3. Update Chat History
+            // Try to find the latest chat session for this project
+            const latestChat = await tx.chat.findFirst({
+                where: { projectId: id },
+                orderBy: { createdAt: 'desc' },
+                select: { id: true }
+            });
+
+            if (latestChat) {
+                // Update existing chat messages
+                await tx.chatMessage.deleteMany({ where: { chatId: latestChat.id } });
+                await tx.chatMessage.createMany({
+                    data: messages.map((m: any) => ({
+                        chatId: latestChat.id,
+                        role: m.role,
+                        content: m.content
+                    }))
+                });
+            } else {
+                // Create a new chat session if none exists
+                await tx.chat.create({
+                    data: {
+                        projectId: id,
+                        userId: session.user.id,
+                        messages: {
+                            create: messages.map((m: any) => ({
+                                role: m.role,
+                                content: m.content
+                            }))
+                        }
+                    }
+                });
+            }
+        });
 
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Project Update Error:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({
+            error: 'Internal Server Error',
+            message: error instanceof Error ? error.message : String(error)
+        }, { status: 500 });
     }
 }
 
@@ -108,7 +144,7 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const userId = (session.user as any).id;
+        const userId = session.user.id;
         if (!userId) {
             return NextResponse.json({ error: 'User ID missing in session' }, { status: 400 });
         }
