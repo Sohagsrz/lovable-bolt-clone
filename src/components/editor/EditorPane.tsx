@@ -372,6 +372,7 @@ export const EditorPane = () => {
                             >
                                 <Terminal
                                     id={t.id}
+                                    isActive={activeTerminalId === t.id}
                                     onReady={(term) => handleTerminalReady(t.id, term)}
                                 />
                             </div>

@@ -69,10 +69,17 @@ export const FileExplorer = () => {
         setEditingPath(null);
     };
 
-    const handleDelete = (path: string, e: React.MouseEvent) => {
+    const handleDelete = async (path: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (confirm(`Delete ${path}?`)) {
-            deleteFile(path);
+        if (confirm(`Delete ${path}? This action is permanent.`)) {
+            // Native FS deletion via ToolService or direct wc access
+            try {
+                const { ToolService } = await import('@/services/ToolService');
+                await ToolService.execute({ type: 'deleteFile', content: path, description: `User deleted ${path}` });
+            } catch (err) {
+                // Fallback to store only if tool service fails
+                deleteFile(path);
+            }
         }
     };
 
@@ -138,8 +145,16 @@ export const FileExplorer = () => {
                                 <button
                                     onClick={(e) => { e.stopPropagation(); handleCreateFile(currentPath); }}
                                     className="p-1 hover:bg-white/10 rounded text-white/40 hover:text-white"
+                                    title="Add File"
                                 >
                                     <FilePlus className="w-3 h-3" />
+                                </button>
+                                <button
+                                    onClick={(e) => handleDelete(currentPath, e)}
+                                    className="p-1 hover:bg-white/10 rounded text-white/40 hover:text-rose-400"
+                                    title="Delete Folder"
+                                >
+                                    <Trash2 className="w-3 h-3" />
                                 </button>
                             </div>
                         </div>

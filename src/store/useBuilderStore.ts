@@ -133,10 +133,10 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     })),
 
     deleteFile: (path) => set((state) => ({
-        files: state.files.filter(f => f.path !== path),
-        activeFile: state.activeFile === path ? null : state.activeFile,
-        pendingFiles: state.pendingFiles.filter(f => f.path !== path),
-        originalFiles: state.originalFiles.filter(f => f.path !== path)
+        files: state.files.filter(f => f.path !== path && !f.path.startsWith(`${path}/`)),
+        activeFile: (state.activeFile === path || state.activeFile?.startsWith(`${path}/`)) ? null : state.activeFile,
+        pendingFiles: state.pendingFiles.filter(f => f.path !== path && !f.path.startsWith(`${path}/`)),
+        originalFiles: state.originalFiles.filter(f => f.path !== path && !f.path.startsWith(`${path}/`))
     })),
 
     setActiveFile: (path) => set({ activeFile: path }),

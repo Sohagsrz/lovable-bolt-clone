@@ -157,7 +157,7 @@ export const ChatPane = () => {
             const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
             // Initial deliberate pause for "Architectural Calculation"
-            await sleep(1000);
+            await sleep(2000);
 
             while (hasMoreThinking && turns < maxTurns) {
                 turns++;
@@ -302,8 +302,8 @@ STRICT RULE: STOP TALKING. START BUILDING. MATERIALIZE THE ARCHITECTURE NOW.`;
                     // Update messages for next turn
                     currentMessages = [...currentMessages, { role: 'assistant', content: turnContent }, toolMessage];
 
-                    // Add a professional deliberate delay for user readability
-                    await sleep(2400);
+                    // Add a professional deliberate delay for user readability (Deep Pacing)
+                    await sleep(4500);
                     hasMoreThinking = true;
                 } else if ((mode === 'build' || mode === 'fix') && turns <= 3 && changes.length === 0 && toolCalls.length === 0) {
                     // CRITICAL SELF-CORRECTION
@@ -314,7 +314,7 @@ STRICT RULE: STOP TALKING. START BUILDING. MATERIALIZE THE ARCHITECTURE NOW.`;
                     addMessage(nudgeMessage);
                     currentMessages = [...currentMessages, { role: 'assistant', content: turnContent }, nudgeMessage];
 
-                    await sleep(2000);
+                    await sleep(3000);
                     hasMoreThinking = true;
                 } else if (turnContent === lastTurnContent && turns > 1) {
                     // Loop prevention
