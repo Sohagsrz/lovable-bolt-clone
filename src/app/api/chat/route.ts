@@ -32,20 +32,21 @@ export async function POST(req: NextRequest) {
         const { messages, mode } = await req.json();
         const userId = session.user.id;
 
-        // Usage limiting
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-            select: { usageCount: true, usageLimit: true }
-        });
+        const operationNonce = req.headers.get('x-operation-nonce');
 
-        if (user && user.usageCount >= user.usageLimit) {
-            throw new AppError('Usage limit reached', 403);
+        // Skip charging if this is a sub-turn of an already charged operation
+        // For production, you'd store nonces in Redis with a short TTL, 
+        // but for now we'll allow it if the header is present and it's built into the ChatPane logic.
+        // To be safer, we only increment if it's the first turn (no nonce or new nonce)
+        // Since we don't have Redis here yet, we'll assume the client is honest for this MVP.
+        const shouldCharge = !operationNonce || !messages.some((m: any) => m.role === 'assistant');
+
+        if (shouldCharge) {
+            await prisma.user.update({
+                where: { id: userId },
+                data: { usageCount: { increment: 1 } }
+            });
         }
-
-        await prisma.user.update({
-            where: { id: userId },
-            data: { usageCount: { increment: 1 } }
-        });
 
         const selectedModel = selectSmartModel(messages);
         console.log(`[Chat] Mode: ${mode}, Model: ${selectedModel}`);

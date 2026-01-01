@@ -73,6 +73,7 @@ export const ChatPane = () => {
     const [mode, setMode] = useState<AgentMode>('build');
     const [lastError, setLastError] = useState<string | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const abortRef = useRef<AbortController | null>(null);
 
     const summarizeHistory = async (msgs: any[]) => {
         try {
@@ -131,8 +132,12 @@ export const ChatPane = () => {
         setGenerating(true);
         setPlan(`Agent [${mode.toUpperCase()}] is architecting a solution...`);
 
-        // Create a checkpoint before the AI modifies anything
+        // Create a checkpoint and a unique operation nonce
         const checkpointId = useBuilderStore.getState().addCheckpoint(`Pre-Task: ${textToSend.slice(0, 30)}...`);
+        const operationNonce = crypto.randomUUID();
+
+        const abortController = new AbortController();
+        abortRef.current = abortController;
 
         try {
             let currentMessages = [
@@ -146,7 +151,8 @@ export const ChatPane = () => {
 
             let hasMoreThinking = true;
             let turns = 0;
-            const maxTurns = 5;
+            const maxTurns = 4;
+            let lastTurnContent = '';
 
             while (hasMoreThinking && turns < maxTurns) {
                 turns++;
@@ -187,11 +193,15 @@ STRICT RULE: STOP TALKING. START BUILDING. MATERIALIZE THE ARCHITECTURE NOW.`;
 
                 const response = await fetch('/api/chat', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Operation-Nonce': operationNonce // Charge only once per operation
+                    },
                     body: JSON.stringify({
                         messages: currentMessages,
                         mode: mode
-                    })
+                    }),
+                    signal: abortController.signal
                 });
 
                 if (response.status === 403) {
@@ -288,17 +298,20 @@ STRICT RULE: STOP TALKING. START BUILDING. MATERIALIZE THE ARCHITECTURE NOW.`;
                     currentMessages = [...currentMessages, { role: 'assistant', content: turnContent }, toolMessage];
                     hasMoreThinking = true;
                 } else if ((mode === 'build' || mode === 'fix') && turns <= 3 && changes.length === 0 && toolCalls.length === 0) {
-                    // CRITICAL SELF-CORRECTION: If AI didn't do code or tools in early turns, issued a strict command
-                    console.warn(`[Agent Loop] turn ${turns}: MISSION FAILURE detected (No Action). Issuing Command...`);
+                    // CRITICAL SELF-CORRECTION
                     const nudgeMessage = {
                         role: 'system' as const,
-                        content: "[URGENT ADVISORY]: MISSION FAILURE. Your previous response contained narrative but ZERO tool calls or code blocks. Stop describing the plan and START EXECUTION. Use <bolt_tool type=\"shell\"> or '### FILE' immediately. DO NOT ASK FOR PERMISSION."
+                        content: "[URGENT ADVISORY]: Materiality mandatory. Start building now."
                     };
                     addMessage(nudgeMessage);
                     currentMessages = [...currentMessages, { role: 'assistant', content: turnContent }, nudgeMessage];
                     hasMoreThinking = true;
+                } else if (turnContent === lastTurnContent && turns > 1) {
+                    // Loop prevention
+                    hasMoreThinking = false;
                 } else {
                     hasMoreThinking = false;
+                    lastTurnContent = turnContent;
 
                     // Final finish / Broadcast
                     const totalChanges = changes.length;
@@ -333,6 +346,13 @@ STRICT RULE: STOP TALKING. START BUILDING. MATERIALIZE THE ARCHITECTURE NOW.`;
             handleSend(lastUserMsg.content);
         }
     };
+    const stopArchitect = () => {
+        if (abortRef.current) {
+            abortRef.current.abort();
+            abortRef.current = null;
+        }
+    };
+
 
     const autoSaveProject = async (name: string, pFiles: any[], pMessages: any[]) => {
         try {
@@ -422,8 +442,20 @@ STRICT RULE: STOP TALKING. START BUILDING. MATERIALIZE THE ARCHITECTURE NOW.`;
                         AI Architect
                     </h2>
                     <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                        <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest leading-none mt-0.5">Live</span>
+                        {isGenerating ? (
+                            <button
+                                onClick={stopArchitect}
+                                className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-all text-[8px] font-black uppercase tracking-widest border border-rose-500/20 shadow-[0_0_10px_rgba(244,63,94,0.2)]"
+                            >
+                                <X className="w-2.5 h-2.5" />
+                                Stop
+                            </button>
+                        ) : (
+                            <>
+                                <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                                <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest leading-none mt-0.5">Live</span>
+                            </>
+                        )}
                     </div>
                 </div>
 
