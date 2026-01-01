@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 export const SideBar = () => {
     const router = useRouter();
     const [userProjects, setUserProjects] = React.useState<any[]>([]);
-    const { files, activeFile, setActiveFile, reset, setProject, projectName, projectId } = useBuilderStore();
+    const { files, activeFile, setActiveFile, reset, setProject, projectName, projectId, checkpoints, addCheckpoint, restoreCheckpoint } = useBuilderStore();
     const { data: session } = useSession();
     const [view, setView] = useState<'projects' | 'activity'>('projects');
     const [isDeployOpen, setIsDeployOpen] = useState(false);
@@ -111,6 +111,47 @@ export const SideBar = () => {
 
                 {view === 'projects' ? (
                     <div className="py-4 px-2 space-y-6">
+                        {/* Checkpoints Section */}
+                        <section>
+                            <div className="flex items-center justify-between px-3 mb-2">
+                                <h3 className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">Checkpoints</h3>
+                                <button
+                                    onClick={() => {
+                                        const name = prompt('Checkpoint name:');
+                                        if (name) addCheckpoint(name);
+                                    }}
+                                    className="p-1 hover:bg-indigo-600/20 rounded text-indigo-400/50 hover:text-indigo-400 transition-colors"
+                                    title="Create Snapshot"
+                                >
+                                    <Plus className="w-3 h-3" />
+                                </button>
+                            </div>
+                            <div className="space-y-1 px-1">
+                                {checkpoints.length === 0 ? (
+                                    <div className="px-2 py-2 text-[10px] text-white/10 italic">No checkpoints saved</div>
+                                ) : (
+                                    checkpoints.map((cp) => (
+                                        <div key={cp.id} className="group flex items-center justify-between p-2 rounded-lg hover:bg-white/[0.03] transition-all">
+                                            <div className="min-w-0 pr-2">
+                                                <p className="text-[11px] font-bold text-white/60 truncate leading-none mb-1">{cp.name}</p>
+                                                <p className="text-[9px] text-white/10 uppercase tracking-tighter">{new Date(cp.timestamp).toLocaleTimeString()}</p>
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    if (confirm('Restore this checkpoint? Unsaved changes will be lost.')) {
+                                                        restoreCheckpoint(cp.id);
+                                                    }
+                                                }}
+                                                className="opacity-0 group-hover:opacity-100 p-1 bg-indigo-600/10 text-indigo-400 rounded hover:bg-indigo-600 hover:text-white transition-all text-[9px] font-black"
+                                            >
+                                                RESTORE
+                                            </button>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </section>
+
                         {/* History Section */}
                         <section>
                             <h3 className="px-3 mb-2 text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">Project Archive</h3>

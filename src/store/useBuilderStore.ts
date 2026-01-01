@@ -39,6 +39,10 @@ interface BuilderState {
     setGenerating: (status: boolean) => void;
     setPlan: (plan: string | null) => void;
     setPlanSteps: (steps: PlanStep[]) => void;
+    checkpoints: { id: string, name: string, files: FileNode[], timestamp: number }[];
+    addCheckpoint: (name: string) => void;
+    restoreCheckpoint: (id: string) => void;
+    deleteCheckpoint: (id: string) => void;
     updatePlanStep: (id: string, updates: Partial<PlanStep>) => void;
     setPreviewUrl: (url: string | null) => void;
     setProject: (id: string | null, name: string, files: FileNode[], messages: Message[]) => void;
@@ -114,6 +118,30 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
         )
     })),
 
+    checkpoints: [],
+    addCheckpoint: (name) => set((state) => ({
+        checkpoints: [
+            ...state.checkpoints,
+            {
+                id: Math.random().toString(36).substring(7),
+                name,
+                files: JSON.parse(JSON.stringify(state.files)),
+                timestamp: Date.now()
+            }
+        ]
+    })),
+    restoreCheckpoint: (id) => set((state) => {
+        const cp = state.checkpoints.find(c => c.id === id);
+        if (!cp) return state;
+        return {
+            files: JSON.parse(JSON.stringify(cp.files)),
+            activeFile: cp.files.length > 0 ? cp.files[0].path : null
+        };
+    }),
+    deleteCheckpoint: (id) => set((state) => ({
+        checkpoints: state.checkpoints.filter(c => c.id !== id)
+    })),
+
     previewUrl: null,
     setPreviewUrl: (url) => set({ previewUrl: url }),
 
@@ -125,7 +153,8 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
         activeFile: files.length > 0 ? files[0].path : null,
         currentPlan: null,
         planSteps: [],
-        previewUrl: null
+        previewUrl: null,
+        checkpoints: []
     }),
 
     reset: () => set({
@@ -142,7 +171,8 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
         isGenerating: false,
         currentPlan: null,
         planSteps: [],
-        previewUrl: null
+        previewUrl: null,
+        checkpoints: []
     }),
 
     getFileContent: (path) => {
