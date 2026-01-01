@@ -151,8 +151,10 @@ export const ChatPane = () => {
 
             let hasMoreThinking = true;
             let turns = 0;
-            const maxTurns = 4;
+            const maxTurns = 3;
             let lastTurnContent = '';
+
+            const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
             while (hasMoreThinking && turns < maxTurns) {
                 turns++;
@@ -296,6 +298,9 @@ STRICT RULE: STOP TALKING. START BUILDING. MATERIALIZE THE ARCHITECTURE NOW.`;
 
                     // Update messages for next turn
                     currentMessages = [...currentMessages, { role: 'assistant', content: turnContent }, toolMessage];
+
+                    // Add a small delay for readability
+                    await sleep(1200);
                     hasMoreThinking = true;
                 } else if ((mode === 'build' || mode === 'fix') && turns <= 3 && changes.length === 0 && toolCalls.length === 0) {
                     // CRITICAL SELF-CORRECTION
@@ -305,6 +310,8 @@ STRICT RULE: STOP TALKING. START BUILDING. MATERIALIZE THE ARCHITECTURE NOW.`;
                     };
                     addMessage(nudgeMessage);
                     currentMessages = [...currentMessages, { role: 'assistant', content: turnContent }, nudgeMessage];
+
+                    await sleep(1500);
                     hasMoreThinking = true;
                 } else if (turnContent === lastTurnContent && turns > 1) {
                     // Loop prevention
