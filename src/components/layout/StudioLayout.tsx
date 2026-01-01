@@ -96,29 +96,27 @@ export const StudioLayout = () => {
                     direction="horizontal"
                     autoSaveId={layoutKey}
                 >
-                    {hasFiles && (
-                        <>
-                            <Panel
-                                ref={sidebarRef}
-                                id="sidebar"
-                                defaultSize={12}
-                                minSize={8}
-                                maxSize={18}
-                                collapsible
-                                onCollapse={() => setIsSidebarCollapsed(true)}
-                                onExpand={() => setIsSidebarCollapsed(false)}
-                            >
-                                <SideBar />
-                            </Panel>
-                            {!isSidebarCollapsed && <ResizeHandle />}
-                        </>
-                    )}
+                    <>
+                        <Panel
+                            ref={sidebarRef}
+                            id="sidebar"
+                            defaultSize={12}
+                            minSize={8}
+                            maxSize={18}
+                            collapsible
+                            onCollapse={() => setIsSidebarCollapsed(true)}
+                            onExpand={() => setIsSidebarCollapsed(false)}
+                        >
+                            <SideBar />
+                        </Panel>
+                        {!isSidebarCollapsed && <ResizeHandle />}
+                    </>
 
-                    <Panel id="chat" defaultSize={hasFiles ? 22 : 100} minSize={hasFiles ? 15 : 20} maxSize={hasFiles ? 35 : 100}>
+                    <Panel id="chat" defaultSize={hasFiles ? 22 : 30} minSize={20} maxSize={hasFiles ? 35 : 40}>
                         <ChatPane />
                     </Panel>
 
-                    {hasFiles && (
+                    {hasFiles ? (
                         <>
                             <ResizeHandle />
                             <Panel id="explorer" defaultSize={15} minSize={10} maxSize={25} collapsible>
@@ -136,6 +134,21 @@ export const StudioLayout = () => {
                                 <PreviewPane />
                             </Panel>
                         </>
+                    ) : (
+                        // Placeholder panel to keep layout balanced when empty
+                        <Panel id="empty-workspace" defaultSize={70}>
+                            <div className="h-full w-full bg-[#0a0a0c] flex items-center justify-center p-12">
+                                <div className="max-w-md text-center">
+                                    <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 flex items-center justify-center mx-auto mb-6 border border-indigo-500/20">
+                                        <Sparkles className="w-8 h-8 text-indigo-400" />
+                                    </div>
+                                    <h2 className="text-xl font-black uppercase tracking-widest text-white mb-3">Studio Empty</h2>
+                                    <p className="text-white/30 text-xs font-medium leading-relaxed tracking-tight">
+                                        Enter an architectural objective in the architect panel to scaffold your production-ready workspace.
+                                    </p>
+                                </div>
+                            </div>
+                        </Panel>
                     )}
                 </PanelGroup>
             </div>
