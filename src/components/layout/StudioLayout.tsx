@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { Panel, PanelGroup, PanelResizeHandle, ImperativePanelHandle } from 'react-resizable-panels';
 import { SideBar } from '@/components/layout/SideBar';
 import { EditorPane } from '@/components/editor/EditorPane';
 import { ChatPane } from '@/components/chat/ChatPane';
 import { PreviewPane } from '@/components/editor/PreviewPane';
 import { PlanPane } from '@/components/plan/PlanPane';
 import { FileExplorer } from '@/components/editor/FileExplorer';
-import { MessageSquare, Code2, Play, Menu } from 'lucide-react';
+import { MessageSquare, Code2, Play, Menu, Sidebar as SidebarIcon, ChevronRight } from 'lucide-react';
 import { useBuilderStore } from '@/store/useBuilderStore';
 
 export const ResizeHandle = ({ className = "" }: { className?: string }) => (
@@ -19,6 +19,9 @@ export const ResizeHandle = ({ className = "" }: { className?: string }) => (
 
 export const StudioLayout = () => {
     const [isMobile, setIsMobile] = useState(false);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+    const sidebarRef = React.useRef<ImperativePanelHandle>(null);
+
     const { files, planSteps } = useBuilderStore();
     const hasFiles = files && files.length > 0;
     const hasPlan = planSteps && planSteps.length > 0;
@@ -30,14 +33,35 @@ export const StudioLayout = () => {
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    const layoutKey = `bolt-layout-v8-${hasFiles ? 'full' : 'empty'}-${hasPlan ? 'with-plan' : 'no-plan'}`;
+    const layoutKey = `bolt-layout-v9-${hasFiles ? 'full' : 'empty'}-${hasPlan ? 'with-plan' : 'no-plan'}`;
 
     if (isMobile) {
         return <MobileLayout />;
     }
 
+    const toggleSidebar = () => {
+        if (sidebarRef.current) {
+            if (isSidebarCollapsed) {
+                sidebarRef.current.expand();
+            } else {
+                sidebarRef.current.collapse();
+            }
+        }
+    };
+
     return (
-        <div className="h-screen w-screen bg-[#0a0a0c] overflow-hidden text-white font-sans selection:bg-indigo-500/30 flex">
+        <div className="h-screen w-screen bg-[#0a0a0c] overflow-hidden text-white font-sans selection:bg-indigo-500/30 flex relative">
+            {/* Floating Sidebar Trigger (Shows when collapsed) */}
+            {hasFiles && isSidebarCollapsed && (
+                <button
+                    onClick={toggleSidebar}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 z-[60] w-8 h-20 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 hover:border-indigo-500/40 rounded-full flex flex-col items-center justify-center gap-2 group transition-all animate-in slide-in-from-left-4 duration-500 backdrop-blur-md"
+                >
+                    <SidebarIcon className="w-3.5 h-3.5 text-indigo-400 group-hover:scale-110 transition-transform" />
+                    <ChevronRight className="w-3 h-3 text-indigo-400 animate-pulse" />
+                </button>
+            )}
+
             <PanelGroup
                 key={layoutKey}
                 direction="horizontal"
@@ -45,10 +69,19 @@ export const StudioLayout = () => {
             >
                 {hasFiles && (
                     <>
-                        <Panel id="sidebar" defaultSize={12} minSize={8} maxSize={18} collapsible>
+                        <Panel
+                            ref={sidebarRef}
+                            id="sidebar"
+                            defaultSize={12}
+                            minSize={8}
+                            maxSize={18}
+                            collapsible
+                            onCollapse={() => setIsSidebarCollapsed(true)}
+                            onExpand={() => setIsSidebarCollapsed(false)}
+                        >
                             <SideBar />
                         </Panel>
-                        <ResizeHandle />
+                        {!isSidebarCollapsed && <ResizeHandle />}
                     </>
                 )}
 
