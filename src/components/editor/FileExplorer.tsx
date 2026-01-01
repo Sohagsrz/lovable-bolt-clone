@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { FileCode, Folder, ChevronRight, ChevronDown } from 'lucide-react';
 import { useBuilderStore } from '@/store/useBuilderStore';
+import { calculateDiffStats } from '@/lib/diff';
 
 interface TreeFile {
     path: string;
@@ -18,8 +19,33 @@ interface TreeFolder {
 
 type TreeItem = TreeFile | TreeFolder;
 
+const DiffBadge = ({ path }: { path: string }) => {
+    const { pendingFiles, originalFiles } = useBuilderStore();
+    const pending = pendingFiles.find(f => f.path === path);
+    const original = originalFiles.find(f => f.path === path);
+
+    if (!pending) return null;
+
+    const stats = calculateDiffStats(original?.content || '', pending.content);
+
+    return (
+        <div className="flex items-center gap-1.5 ml-1 animate-in fade-in slide-in-from-right-1 duration-300">
+            {stats.additions > 0 && (
+                <span className="text-[9px] font-black text-emerald-400 bg-emerald-400/10 px-1 rounded-sm leading-none py-0.5">
+                    +{stats.additions}
+                </span>
+            )}
+            {stats.deletions > 0 && (
+                <span className="text-[9px] font-black text-rose-400 bg-rose-400/10 px-1 rounded-sm leading-none py-0.5">
+                    -{stats.deletions}
+                </span>
+            )}
+        </div>
+    );
+};
+
 export const FileExplorer = () => {
-    const { files, activeFile, setActiveFile, pendingFiles } = useBuilderStore();
+    const { files, activeFile, setActiveFile, pendingFiles, originalFiles } = useBuilderStore();
     const [openFolders, setOpenFolders] = React.useState<Set<string>>(new Set(['src', 'components', 'lib', 'app']));
 
     const toggleFolder = (path: string) => {
@@ -30,7 +56,7 @@ export const FileExplorer = () => {
     };
 
     // Convert flat paths to tree
-    const buildTree = (): TreeFolder => {
+    const tree = useMemo(() => {
         const root: TreeFolder = { name: 'root', type: 'directory', children: [] };
 
         files.forEach(file => {
@@ -55,7 +81,7 @@ export const FileExplorer = () => {
         });
 
         return root;
-    };
+    }, [files]);
 
     const renderTree = (items: TreeItem[], depth = 0, parentPath = '') => {
         // Sort: folders first, then files alphabetically
@@ -93,13 +119,14 @@ export const FileExplorer = () => {
                         key={item.path}
                         onClick={() => setActiveFile(item.path)}
                         className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-[12px] transition-all group relative ${isActive
-                                ? 'bg-indigo-600/10 text-indigo-400 font-bold'
-                                : 'text-white/40 hover:bg-white/5 hover:text-white/70'
+                            ? 'bg-indigo-600/10 text-indigo-400 font-bold'
+                            : 'text-white/40 hover:bg-white/5 hover:text-white/70'
                             }`}
                         style={{ paddingLeft: `${depth * 12 + 25}px` }}
                     >
                         <FileCode className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-indigo-400' : 'text-white/10 group-hover:text-white/30'}`} />
                         <span className="truncate text-left flex-1">{item.name}</span>
+                        <DiffBadge path={item.path} />
                         {isPending && (
                             <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)] animate-pulse shrink-0" />
                         )}

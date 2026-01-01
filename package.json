@@ -19,6 +19,7 @@
     "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
+    "diff": "^8.0.2",
     "framer-motion": "^12.23.26",
     "lucide-react": "^0.562.0",
     "monaco-editor": "^0.55.1",
@@ -35,6 +36,7 @@
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
+    "@types/diff": "^7.0.2",
     "@types/node": "^20",
     "@types/react": "^18.3.27",
     "@types/react-dom": "^18.3.7",

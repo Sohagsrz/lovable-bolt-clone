@@ -8,7 +8,7 @@ export function parseAIResponse(text: string): FileChange[] {
 
     // Enhanced regex to handle streaming (matches even if closing ``` is missing)
     // Supports "FILE: path" or "### FILE: path"
-    const fileRegex = /(?:###\s*)?FILE:?\s*([^\n\r]+)[\s\S]*?```[\w]*\n([\s\S]*?)(?:```|$)/g;
+    const fileRegex = /(?:###\s*)?FILE:?\s*([a-zA-Z0-9\/\.\_\-]+)[\s\S]*?```[\w]*\n([\s\S]*?)(?:```|$)/g;
     let match;
 
     while ((match = fileRegex.exec(text)) !== null) {
