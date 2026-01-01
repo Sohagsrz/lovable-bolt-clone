@@ -10,11 +10,22 @@ export class ToolService {
     static async executeShell(command: string): Promise<string> {
         try {
             const wc = await getWebContainer();
+            const { useBuilderStore } = await import('@/store/useBuilderStore');
+            const activeId = useBuilderStore.getState().activeTerminalId;
+            const term = activeId ? (window as any)[`term_${activeId}`] : null;
+
+            if (term) {
+                term.writeln(`\r\n\x1b[1;34m⚡ [ARCHITECT]:\x1b[0m \x1b[32m${command}\x1b[0m`);
+            }
+
             const process = await wc.spawn('jsh', ['-c', command]);
 
             let output = '';
             process.output.pipeTo(new WritableStream({
-                write(data) { output += data; }
+                write(data) {
+                    output += data;
+                    if (term) term.write(data);
+                }
             }));
 
             const exitCode = await process.exit;
@@ -23,18 +34,20 @@ export class ToolService {
             if (exitCode === 0 && (command.includes('touch') || command.includes('mkdir'))) {
                 const pathMatch = command.match(/(?:touch|mkdir(?:\s+-p)?)\s+([^\s;&|]+)/);
                 if (pathMatch && pathMatch[1]) {
-                    const filePath = pathMatch[1].replace(/^\.\//, '');
-                    // Only try to materialize 'touch' as it's a file
+                    const filePath = pathMatch[1].replace(/^\.\//, '').trim();
                     if (command.startsWith('touch')) {
-                        const { useBuilderStore } = await import('@/store/useBuilderStore');
                         useBuilderStore.getState().upsertFile(filePath, '');
                     }
                 }
             }
 
             if (exitCode !== 0) {
-                return `[Error] Exit code ${exitCode}: ${output}`;
+                const err = `[Error] Exit code ${exitCode}: ${output}`;
+                if (term) term.writeln(`\r\n\x1b[1;31m✖ ${err}\x1b[0m`);
+                return err;
             }
+
+            if (term) term.writeln(`\r\n\x1b[1;32m✔ Task Complete\x1b[0m`);
             return output || "Done (no output)";
         } catch (err: any) {
             return `[Execution Error] ${err.message}`;
