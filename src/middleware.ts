@@ -11,6 +11,6 @@ export const config = {
          * - _next/image (image optimization files)
          * - favicon.ico (favicon file)
          */
-        "/((?!api/auth|auth|favicon.ico|_next).*)",
+        "/((?!api/auth|auth|webcontainer|favicon.ico|_next).*)",
     ],
 };
