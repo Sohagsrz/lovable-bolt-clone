@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { parseAIResponse } from '@/lib/parser';
+import { handleApiError, AppError } from '@/lib/api-utils';
 
 // "Smart" model selection logic
 function selectSmartModel(messages: any[]) {
@@ -11,7 +11,7 @@ function selectSmartModel(messages: any[]) {
     const lastMessage = messages[messages.length - 1]?.content || "";
     const fullContextLength = JSON.stringify(messages).length;
 
-    // If context is very large, use a more capable model
+    // If context is very large, use more capable model
     if (fullContextLength > 40000) return 'gpt-4o';
 
     // If user is asking to Build/Create/Refactor (Complex tasks), use gpt-4o
@@ -19,56 +19,52 @@ function selectSmartModel(messages: any[]) {
         return 'gpt-4o';
     }
 
-    // Default to a fast but capable model
     return 'gpt-4o-mini';
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            throw new AppError('Unauthorized', 401);
         }
 
         const { messages, mode } = await req.json();
         const userId = session.user.id;
 
-        // Usage limiting logic
-        if (userId) {
-            const user = await prisma.user.findUnique({
-                where: { id: userId },
-                select: { usageCount: true, usageLimit: true }
-            });
-            if (user && user.usageCount >= user.usageLimit) {
-                return NextResponse.json({ error: 'Usage limit reached' }, { status: 403 });
-            }
+        // Usage limiting
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { usageCount: true, usageLimit: true }
+        });
 
-            await prisma.user.update({
-                where: { id: userId },
-                data: { usageCount: { increment: 1 } }
-            });
+        if (user && user.usageCount >= user.usageLimit) {
+            throw new AppError('Usage limit reached', 403);
         }
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: { usageCount: { increment: 1 } }
+        });
 
         const selectedModel = selectSmartModel(messages);
         console.log(`[Chat] Mode: ${mode}, Model: ${selectedModel}`);
 
-        // Proxy request to local copilot with streaming
         const response = await fetch('http://localhost:4141/v1/chat/completions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 model: selectedModel,
                 messages,
-                stream: true // Enable streaming
+                stream: true
             })
         });
 
         if (!response.ok) {
             const err = await response.text();
-            throw new Error(`Proxy error: ${err}`);
+            throw new AppError(`AI Proxy error: ${err}`, response.status as any);
         }
 
-        // Create a stream that parses the upstream SSE and yields just the text content
         const stream = new ReadableStream({
             async start(controller) {
                 const reader = response.body?.getReader();
@@ -89,11 +85,10 @@ export async function POST(req: Request) {
                         buffer += chunk;
 
                         const lines = buffer.split('\n');
-                        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+                        buffer = lines.pop() || '';
 
                         for (const line of lines) {
-                            if (line.trim() === '') continue;
-                            if (line.trim() === 'data: [DONE]') continue;
+                            if (line.trim() === '' || line.trim() === 'data: [DONE]') continue;
                             if (line.startsWith('data: ')) {
                                 try {
                                     const data = JSON.parse(line.slice(6));
@@ -101,14 +96,11 @@ export async function POST(req: Request) {
                                     if (content) {
                                         controller.enqueue(new TextEncoder().encode(content));
                                     }
-                                } catch (e) {
-                                    // Ignore parse errors for partial chunks
-                                }
+                                } catch (e) { }
                             }
                         }
                     }
                 } catch (err) {
-                    console.error('Streaming error:', err);
                     controller.error(err);
                 } finally {
                     controller.close();
@@ -124,10 +116,6 @@ export async function POST(req: Request) {
         });
 
     } catch (error) {
-        console.error('API Route Error Detailed:', error);
-        return NextResponse.json({
-            error: 'Internal Server Error',
-            details: error instanceof Error ? error.message : String(error)
-        }, { status: 500 });
+        return handleApiError(error);
     }
 }

@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { handleApiError, successResponse, AppError } from '@/lib/api-utils';
 
 export async function POST(req: Request) {
     try {
         const session = await getServerSession(authOptions);
-        if (!session || !session.user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        if (!session?.user) {
+            throw new AppError('Unauthorized', 401);
         }
 
         const { name, files, messages } = await req.json();
@@ -46,18 +47,17 @@ export async function POST(req: Request) {
             }
         });
 
-        return NextResponse.json(project);
+        return successResponse(project);
     } catch (error) {
-        console.error('Project Create Error:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        return handleApiError(error);
     }
 }
 
 export async function PUT(req: Request) {
     try {
         const session = await getServerSession(authOptions);
-        if (!session || !session.user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        if (!session?.user) {
+            throw new AppError('Unauthorized', 401);
         }
 
         const { id, name, files, messages } = await req.json();
@@ -68,7 +68,7 @@ export async function PUT(req: Request) {
         });
 
         if (!existing) {
-            return NextResponse.json({ error: 'Not Found' }, { status: 404 });
+            throw new AppError('Project not found', 404);
         }
 
         // Update project (using a transaction for atomic file and chat updates)
@@ -91,7 +91,6 @@ export async function PUT(req: Request) {
             });
 
             // 3. Update Chat History
-            // Try to find the latest chat session for this project
             const latestChat = await tx.chat.findFirst({
                 where: { projectId: id },
                 orderBy: { createdAt: 'desc' },
@@ -99,7 +98,6 @@ export async function PUT(req: Request) {
             });
 
             if (latestChat) {
-                // Update existing chat messages
                 await tx.chatMessage.deleteMany({ where: { chatId: latestChat.id } });
                 await tx.chatMessage.createMany({
                     data: messages.map((m: any) => ({
@@ -109,7 +107,6 @@ export async function PUT(req: Request) {
                     }))
                 });
             } else {
-                // Create a new chat session if none exists
                 await tx.chat.create({
                     data: {
                         projectId: id,
@@ -125,13 +122,9 @@ export async function PUT(req: Request) {
             }
         });
 
-        return NextResponse.json({ success: true });
+        return successResponse({ success: true });
     } catch (error) {
-        console.error('Project Update Error:', error);
-        return NextResponse.json({
-            error: 'Internal Server Error',
-            message: error instanceof Error ? error.message : String(error)
-        }, { status: 500 });
+        return handleApiError(error);
     }
 }
 
@@ -140,14 +133,12 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url);
         const id = searchParams.get('id');
         const session = await getServerSession(authOptions);
-        if (!session || !session.user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+        if (!session?.user) {
+            throw new AppError('Unauthorized', 401);
         }
 
         const userId = session.user.id;
-        if (!userId) {
-            return NextResponse.json({ error: 'User ID missing in session' }, { status: 400 });
-        }
 
         if (id) {
             const project = await prisma.project.findUnique({
@@ -163,10 +154,10 @@ export async function GET(request: Request) {
             });
 
             if (!project) {
-                return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+                throw new AppError('Project not found', 404);
             }
 
-            return NextResponse.json(project);
+            return successResponse(project);
         }
 
         const projects = await prisma.project.findMany({
@@ -179,12 +170,8 @@ export async function GET(request: Request) {
             orderBy: { updatedAt: 'desc' }
         });
 
-        return NextResponse.json(projects);
+        return successResponse(projects);
     } catch (error) {
-        console.error('Project List Detailed Error:', error);
-        return NextResponse.json({
-            error: 'Internal Server Error',
-            message: error instanceof Error ? error.message : String(error)
-        }, { status: 500 });
+        return handleApiError(error);
     }
 }
