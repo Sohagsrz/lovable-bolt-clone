@@ -1,7 +1,7 @@
 import { getWebContainer } from '@/lib/webcontainer';
 
 export interface ToolAction {
-    type: 'shell' | 'file' | 'search' | 'npm' | 'readDir' | 'find' | 'webRead' | 'webSearch';
+    type: 'shell' | 'file' | 'search' | 'npm' | 'readDir' | 'find' | 'webRead' | 'webSearch' | 'deleteFile';
     content: string;
     description: string;
 }
@@ -87,6 +87,14 @@ export class ToolService {
                     const data = await res.json();
                     return `[Search Results for "${action.content}"]\nAbstract: ${data.AbstractText}\nResults: ${data.RelatedTopics?.slice(0, 3).map((t: any) => t.Text).join('\n')}`;
                 } catch (e) { return `[Search Error] Could not perform search: ${action.content}`; }
+            case 'deleteFile':
+                try {
+                    await wc.fs.rm(action.content, { recursive: true });
+                    // Sync with store state
+                    const { useBuilderStore } = await import('@/store/useBuilderStore');
+                    useBuilderStore.getState().deleteFile(action.content);
+                    return `Successfully deleted: ${action.content}`;
+                } catch (e) { return `[Delete Error] Could not delete: ${action.content}`; }
             default:
                 throw new Error(`Unknown tool type: ${action.type}`);
         }
