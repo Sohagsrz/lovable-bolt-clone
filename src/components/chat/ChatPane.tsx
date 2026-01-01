@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, User, Bot, Paperclip, Loader2, BrainCircuit, Terminal, Zap, Shield, Wand2, Rocket, CheckCircle2, FileCode, Check, X } from 'lucide-react';
+import { Send, Sparkles, User, Bot, Paperclip, Loader2, BrainCircuit, Terminal, Zap, Shield, Wand2, Rocket, CheckCircle2, FileCode, Check, X, RotateCcw, History, ChevronDown, ChevronRight, ClipboardCheck } from 'lucide-react';
 import { useBuilderStore } from '@/store/useBuilderStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
@@ -51,7 +51,8 @@ export const ChatPane = () => {
         messages, addMessage, updateLastMessageContent, isGenerating, setGenerating,
         files, upsertFile, currentPlan, setPlan, planSteps, setPlanSteps, updatePlanStep,
         projectName, setProjectName, projectId, setProject,
-        pendingFiles, acceptChanges, discardChanges
+        pendingFiles, acceptChanges, discardChanges,
+        restoreCheckpoint, deleteCheckpoint
     } = useBuilderStore();
     const [input, setInput] = useState('');
     const [mode, setMode] = useState<AgentMode>('build');
@@ -93,6 +94,9 @@ export const ChatPane = () => {
         setGenerating(true);
         setPlan(`Agent [${mode.toUpperCase()}] is architecting a solution...`);
 
+        // Create a checkpoint before the AI modifies anything
+        const checkpointId = useBuilderStore.getState().addCheckpoint(`Pre-Task: ${textToSend.slice(0, 30)}...`);
+
         try {
             const systemPrompt = `You are BOLT STUDIO, an elite AI architect.
 Project: ${projectName}
@@ -130,8 +134,8 @@ STRICT RULES:
 
             setPlan(null);
 
-            // Initialize empty assistant message
-            addMessage({ role: 'assistant', content: '' });
+            // Initialize empty assistant message with the checkpoint reference
+            addMessage({ role: 'assistant', content: '', checkpointId });
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
@@ -339,10 +343,70 @@ STRICT RULES:
                                 {msg.role === 'user' ? (
                                     msg.content
                                 ) : (
-                                    <div className="prose prose-invert prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/5">
-                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                            {cleanAIMessage(msg.content)}
-                                        </ReactMarkdown>
+                                    <div className="flex flex-col gap-4">
+                                        <div className="prose prose-invert prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/5">
+                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                {cleanAIMessage(msg.content)}
+                                            </ReactMarkdown>
+                                        </div>
+
+                                        {/* Execution Plan (TODO List) */}
+                                        {msg.role === 'assistant' && planSteps.length > 0 && i === messages.length - 1 && (
+                                            <div className="mt-2 bg-black/20 rounded-xl border border-white/5 overflow-hidden">
+                                                <div className="px-3 py-2 bg-white/5 border-b border-white/5 flex items-center justify-between">
+                                                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-indigo-400">
+                                                        <ClipboardCheck className="w-3.5 h-3.5" />
+                                                        Implementation Plan
+                                                    </div>
+                                                    <div className="text-[9px] text-white/20 font-medium">
+                                                        {planSteps.filter(s => s.status === 'completed').length} / {planSteps.length}
+                                                    </div>
+                                                </div>
+                                                <div className="p-2 space-y-1 max-h-[200px] overflow-y-auto custom-scrollbar">
+                                                    {planSteps.map((step) => (
+                                                        <div key={step.id} className="flex items-start gap-3 p-2 rounded-lg hover:bg-white/[0.02] transition-colors group">
+                                                            <div className="mt-0.5">
+                                                                {step.status === 'completed' ? (
+                                                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]" />
+                                                                ) : step.status === 'in-progress' ? (
+                                                                    <Loader2 className="w-3.5 h-3.5 text-indigo-400 animate-spin" />
+                                                                ) : (
+                                                                    <div className="w-3.5 h-3.5 rounded-full border-2 border-white/10 group-hover:border-white/20" />
+                                                                )}
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className={`text-[12px] font-bold ${step.status === 'completed' ? 'text-white/40 line-through' : 'text-white/80'}`}>
+                                                                    {step.title}
+                                                                </div>
+                                                                <div className="text-[10px] text-white/30 truncate uppercase tracking-tight mt-0.5">
+                                                                    {step.description}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {msg.checkpointId && (
+                                            <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                                                <div className="flex items-center gap-2 text-[10px] text-white/20 italic">
+                                                    <History className="w-3 h-3" />
+                                                    Snapshot captured
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        if (confirm('Restore project to this specific version? All unsaved changes will be lost.')) {
+                                                            restoreCheckpoint(msg.checkpointId!);
+                                                        }
+                                                    }}
+                                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white transition-all text-[10px] font-bold border border-indigo-500/20"
+                                                >
+                                                    <RotateCcw className="w-3 h-3" />
+                                                    Restore to Here
+                                                </button>
+                                            </div>
+                                        )}
 
                                         {/* Show granular file edits like Cursor */}
                                         {msg.content.includes('### FILE:') && (

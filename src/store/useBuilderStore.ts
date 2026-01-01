@@ -9,6 +9,7 @@ interface FileNode {
 interface Message {
     role: 'user' | 'assistant' | 'system';
     content: string;
+    checkpointId?: string;
 }
 
 interface PlanStep {
@@ -28,11 +29,20 @@ interface BuilderState {
     isGenerating: boolean;
     currentPlan: string | null;
     planSteps: PlanStep[];
+
+    // Terminal state
+    terminals: { id: string, name: string }[];
+    activeTerminalId: string;
+    addTerminal: (name?: string) => void;
+    removeTerminal: (id: string) => void;
+    setActiveTerminal: (id: string) => void;
     setProjectName: (name: string) => void;
 
     setFiles: (files: FileNode[]) => void;
     updateFile: (path: string, content: string) => void;
     upsertFile: (path: string, content: string) => void;
+    renameFile: (oldPath: string, newPath: string) => void;
+    deleteFile: (path: string) => void;
     setActiveFile: (path: string | null) => void;
     addMessage: (message: Message) => void;
     updateLastMessageContent: (content: string) => void;
@@ -42,7 +52,7 @@ interface BuilderState {
     acceptChanges: (path?: string) => void;
     discardChanges: (path?: string) => void;
     checkpoints: { id: string, name: string, files: FileNode[], timestamp: number }[];
-    addCheckpoint: (name: string) => void;
+    addCheckpoint: (name: string) => string;
     restoreCheckpoint: (id: string) => void;
     deleteCheckpoint: (id: string) => void;
     updatePlanStep: (id: string, updates: Partial<PlanStep>) => void;
@@ -70,6 +80,30 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     isGenerating: false,
     currentPlan: null,
     planSteps: [],
+    terminals: [{ id: 'term-1', name: 'Terminal' }],
+    activeTerminalId: 'term-1',
+
+    addTerminal: (name) => set((state) => {
+        const id = `term-${Math.random().toString(36).substring(7)}`;
+        return {
+            terminals: [...state.terminals, { id, name: name || `Terminal ${state.terminals.length + 1}` }],
+            activeTerminalId: id
+        };
+    }),
+
+    removeTerminal: (id) => set((state) => {
+        if (state.terminals.length <= 1) return state;
+        const index = state.terminals.findIndex(t => t.id === id);
+        const newTerminals = state.terminals.filter(t => t.id !== id);
+        return {
+            terminals: newTerminals,
+            activeTerminalId: state.activeTerminalId === id
+                ? newTerminals[Math.max(0, index - 1)].id
+                : state.activeTerminalId
+        };
+    }),
+
+    setActiveTerminal: (id) => set({ activeTerminalId: id }),
 
     setProjectName: (name) => set({ projectName: name }),
 
@@ -90,6 +124,20 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
             files: [...state.files, { path, content, type: 'file' }]
         };
     }),
+
+    renameFile: (oldPath, newPath) => set((state) => ({
+        files: state.files.map(f => f.path === oldPath ? { ...f, path: newPath } : f),
+        activeFile: state.activeFile === oldPath ? newPath : state.activeFile,
+        pendingFiles: state.pendingFiles.map(f => f.path === oldPath ? { ...f, path: newPath } : f),
+        originalFiles: state.originalFiles.map(f => f.path === oldPath ? { ...f, path: newPath } : f)
+    })),
+
+    deleteFile: (path) => set((state) => ({
+        files: state.files.filter(f => f.path !== path),
+        activeFile: state.activeFile === path ? null : state.activeFile,
+        pendingFiles: state.pendingFiles.filter(f => f.path !== path),
+        originalFiles: state.originalFiles.filter(f => f.path !== path)
+    })),
 
     setActiveFile: (path) => set({ activeFile: path }),
 
@@ -162,17 +210,21 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     })),
 
     checkpoints: [],
-    addCheckpoint: (name) => set((state) => ({
-        checkpoints: [
-            ...state.checkpoints,
-            {
-                id: Math.random().toString(36).substring(7),
-                name,
-                files: JSON.parse(JSON.stringify(state.files)),
-                timestamp: Date.now()
-            }
-        ]
-    })),
+    addCheckpoint: (name) => {
+        const id = Math.random().toString(36).substring(7);
+        set((state) => ({
+            checkpoints: [
+                ...state.checkpoints,
+                {
+                    id,
+                    name,
+                    files: JSON.parse(JSON.stringify(state.files)),
+                    timestamp: Date.now()
+                }
+            ]
+        }));
+        return id;
+    },
     restoreCheckpoint: (id) => set((state) => {
         const cp = state.checkpoints.find(c => c.id === id);
         if (!cp) return state;
@@ -199,7 +251,9 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
         previewUrl: null,
         checkpoints: [],
         pendingFiles: [],
-        originalFiles: []
+        originalFiles: [],
+        terminals: [{ id: 'term-1', name: 'Terminal' }],
+        activeTerminalId: 'term-1'
     }),
 
     reset: () => set({
@@ -219,7 +273,9 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
         previewUrl: null,
         checkpoints: [],
         pendingFiles: [],
-        originalFiles: []
+        originalFiles: [],
+        terminals: [{ id: 'term-1', name: 'Terminal' }],
+        activeTerminalId: 'term-1'
     }),
 
     getFileContent: (path) => {

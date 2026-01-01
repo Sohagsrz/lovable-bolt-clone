@@ -52,18 +52,9 @@ export const StudioLayout = () => {
                     </>
                 )}
 
-                <Panel id="chat" defaultSize={hasFiles ? (hasPlan ? 18 : 22) : 100} minSize={hasFiles ? 15 : 20} maxSize={hasFiles ? 35 : 100}>
+                <Panel id="chat" defaultSize={hasFiles ? 22 : 100} minSize={hasFiles ? 15 : 20} maxSize={hasFiles ? 35 : 100}>
                     <ChatPane />
                 </Panel>
-
-                {hasPlan && (
-                    <>
-                        <ResizeHandle />
-                        <Panel id="plan" defaultSize={15} minSize={10} maxSize={25} collapsible>
-                            <PlanPane />
-                        </Panel>
-                    </>
-                )}
 
                 {hasFiles && (
                     <>
