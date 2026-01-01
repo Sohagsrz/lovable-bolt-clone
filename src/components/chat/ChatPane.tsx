@@ -250,6 +250,15 @@ STRICT RULE: Focus on one-shot perfection. Be technical, decisive, and aesthetic
                     setPlanSteps(steps.map(s => ({ ...s, status: 'completed' })));
                 }
 
+                // Apply file changes (IMPORTANT: This was missing!)
+                const changes = parseAIResponse(turnContent);
+                if (changes.length > 0) {
+                    const { upsertFile } = useBuilderStore.getState();
+                    changes.forEach(change => {
+                        upsertFile(change.path, change.content);
+                    });
+                }
+
                 // Process tool calls
                 const toolCalls = ToolService.parseToolCalls(turnContent);
                 if (toolCalls.length > 0) {
@@ -273,10 +282,8 @@ STRICT RULE: Focus on one-shot perfection. Be technical, decisive, and aesthetic
                 } else {
                     hasMoreThinking = false;
 
-                    // Final finish
-                    const changes = parseAIResponse(turnContent);
+                    // Final finish / Broadcast
                     const totalChanges = changes.length;
-
                     if (totalChanges > 0 || mode === 'build') {
                         window.dispatchEvent(new CustomEvent('bolt-project-ready', {
                             detail: { count: totalChanges }
