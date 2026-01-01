@@ -36,9 +36,11 @@ interface BuilderState {
     setActiveFile: (path: string | null) => void;
     addMessage: (message: Message) => void;
     updateLastMessageContent: (content: string) => void;
-    setGenerating: (status: boolean) => void;
-    setPlan: (plan: string | null) => void;
-    setPlanSteps: (steps: PlanStep[]) => void;
+    pendingFiles: { path: string, content: string }[];
+    originalFiles: { path: string, content: string }[];
+    setPendingFile: (path: string, content: string) => void;
+    acceptChanges: (path?: string) => void;
+    discardChanges: (path?: string) => void;
     checkpoints: { id: string, name: string, files: FileNode[], timestamp: number }[];
     addCheckpoint: (name: string) => void;
     restoreCheckpoint: (id: string) => void;
@@ -118,6 +120,47 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
         )
     })),
 
+    pendingFiles: [],
+    originalFiles: [],
+
+    setPendingFile: (path, content) => set((state) => {
+        // Capture original if not already captured
+        const hasOriginal = state.originalFiles.find(f => f.path === path);
+        const originalContent = state.files.find(f => f.path === path)?.content || '';
+
+        return {
+            pendingFiles: [...state.pendingFiles.filter(f => f.path !== path), { path, content }],
+            originalFiles: hasOriginal ? state.originalFiles : [...state.originalFiles, { path, content: originalContent }]
+        };
+    }),
+
+    acceptChanges: (path) => set((state) => {
+        const toAccept = path
+            ? state.pendingFiles.filter(f => f.path === path)
+            : state.pendingFiles;
+
+        let newFiles = [...state.files];
+        toAccept.forEach(pending => {
+            const index = newFiles.findIndex(f => f.path === pending.path);
+            if (index !== -1) {
+                newFiles[index] = { ...newFiles[index], content: pending.content };
+            } else {
+                newFiles.push({ path: pending.path, content: pending.content, type: 'file' });
+            }
+        });
+
+        return {
+            files: newFiles,
+            pendingFiles: path ? state.pendingFiles.filter(f => f.path !== path) : [],
+            originalFiles: path ? state.originalFiles.filter(f => f.path !== path) : []
+        };
+    }),
+
+    discardChanges: (path) => set((state) => ({
+        pendingFiles: path ? state.pendingFiles.filter(f => f.path !== path) : [],
+        originalFiles: path ? state.originalFiles.filter(f => f.path !== path) : []
+    })),
+
     checkpoints: [],
     addCheckpoint: (name) => set((state) => ({
         checkpoints: [
@@ -154,7 +197,9 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
         currentPlan: null,
         planSteps: [],
         previewUrl: null,
-        checkpoints: []
+        checkpoints: [],
+        pendingFiles: [],
+        originalFiles: []
     }),
 
     reset: () => set({
@@ -172,7 +217,9 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
         currentPlan: null,
         planSteps: [],
         previewUrl: null,
-        checkpoints: []
+        checkpoints: [],
+        pendingFiles: [],
+        originalFiles: []
     }),
 
     getFileContent: (path) => {

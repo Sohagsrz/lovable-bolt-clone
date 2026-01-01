@@ -3,7 +3,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import Editor, { DiffEditor } from '@monaco-editor/react';
 import { useBuilderStore } from '@/store/useBuilderStore';
-import { FileCode, Play, Terminal as TerminalIcon, Loader2, Save, Diff } from 'lucide-react';
+import { FileCode, Play, Terminal as TerminalIcon, Loader2, Save, Diff, Check, X } from 'lucide-react';
 import { getWebContainer, transformFilesToWebContainer } from '@/lib/webcontainer';
 import { Terminal } from './Terminal';
 import { Terminal as XTerm } from '@xterm/xterm';
@@ -11,16 +11,29 @@ import { useRouter } from 'next/navigation';
 
 export const EditorPane = () => {
     const router = useRouter();
-    const { activeFile, files, getFileContent, updateFile, projectId } = useBuilderStore();
+    const {
+        activeFile, files, getFileContent, updateFile, projectId,
+        pendingFiles, originalFiles, acceptChanges, discardChanges
+    } = useBuilderStore();
     const [showTerminal, setShowTerminal] = useState(true);
     const [isRunning, setIsRunning] = useState(false);
     const [editorMode, setEditorMode] = useState<'edit' | 'diff'>('edit');
-    const [originalContent, setOriginalContent] = useState<string>('');
     const terminalRef = useRef<XTerm | null>(null);
     const webcontainerRef = useRef<any>(null);
     const shellRef = useRef<any>(null);
 
+    const pending = activeFile ? pendingFiles.find(f => f.path === activeFile) : null;
+    const original = activeFile ? originalFiles.find(f => f.path === activeFile) : null;
     const content = activeFile ? getFileContent(activeFile) : null;
+
+    // Auto-switch to diff if AI is writing
+    useEffect(() => {
+        if (pending) {
+            setEditorMode('diff');
+        } else {
+            setEditorMode('edit');
+        }
+    }, [!!pending, activeFile]);
 
     const handleTerminalReady = useCallback(async (term: XTerm) => {
         terminalRef.current = term;
@@ -272,16 +285,26 @@ export const EditorPane = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <button
-                        onClick={() => {
-                            if (editorMode === 'edit') setOriginalContent(content || '');
-                            setEditorMode(editorMode === 'edit' ? 'diff' : 'edit');
-                        }}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${editorMode === 'diff' ? 'bg-indigo-600/10 text-indigo-400' : 'text-white/30 hover:text-white/60'}`}
-                    >
-                        <Diff className="w-3.5 h-3.5" />
-                        {editorMode === 'diff' ? 'EXIT DIFF' : 'DIFF'}
-                    </button>
+                    {pending && (
+                        <div className="flex items-center gap-2 bg-indigo-600/10 px-2 py-1 rounded-lg border border-indigo-500/20 mr-2">
+                            <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest px-1">AI SUGGESTION</span>
+                            <div className="h-4 w-[1px] bg-indigo-500/20" />
+                            <button
+                                onClick={() => acceptChanges(activeFile!)}
+                                className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-black bg-indigo-600 text-white hover:bg-indigo-500 transition-all"
+                            >
+                                <Check className="w-3 h-3" />
+                                ACCEPT
+                            </button>
+                            <button
+                                onClick={() => discardChanges(activeFile!)}
+                                className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-black bg-white/5 text-white/60 hover:bg-white/10 transition-all"
+                            >
+                                <X className="w-3 h-3" />
+                                DISCARD
+                            </button>
+                        </div>
+                    )}
 
                     <button
                         onClick={handleSave}
@@ -338,8 +361,8 @@ export const EditorPane = () => {
                         <DiffEditor
                             height="100%"
                             theme="vs-dark"
-                            original={originalContent}
-                            modified={content || ''}
+                            original={original?.content || content || ''}
+                            modified={pending?.content || content || ''}
                             language={activeFile?.split('.').pop() === 'tsx' ? 'typescript' : 'javascript'}
                             options={{
                                 minimap: { enabled: false },

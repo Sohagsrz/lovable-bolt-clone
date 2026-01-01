@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, User, Bot, Paperclip, Loader2, BrainCircuit, Terminal, Zap, Shield, Wand2, Rocket, CheckCircle2, FileCode } from 'lucide-react';
+import { Send, Sparkles, User, Bot, Paperclip, Loader2, BrainCircuit, Terminal, Zap, Shield, Wand2, Rocket, CheckCircle2, FileCode, Check, X } from 'lucide-react';
 import { useBuilderStore } from '@/store/useBuilderStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
@@ -47,7 +47,12 @@ const extractEditedFiles = (text: string) => {
 
 export const ChatPane = () => {
     const router = useRouter();
-    const { messages, addMessage, updateLastMessageContent, isGenerating, setGenerating, files, upsertFile, currentPlan, setPlan, planSteps, setPlanSteps, updatePlanStep, projectName, setProjectName, projectId, setProject } = useBuilderStore();
+    const {
+        messages, addMessage, updateLastMessageContent, isGenerating, setGenerating,
+        files, upsertFile, currentPlan, setPlan, planSteps, setPlanSteps, updatePlanStep,
+        projectName, setProjectName, projectId, setProject,
+        pendingFiles, acceptChanges, discardChanges
+    } = useBuilderStore();
     const [input, setInput] = useState('');
     const [mode, setMode] = useState<AgentMode>('build');
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -147,29 +152,30 @@ STRICT RULES:
                     if (steps.length > 0) {
                         setPlanSteps(steps);
                         planExtracted = true;
-                        // Mark first step as in-progress
                         updatePlanStep(steps[0].id, { status: 'in-progress' });
                     }
                 }
 
-                // If we have a plan, update "Active Task" feedback
-                if (planExtracted && fullContent.includes('### FILE:')) {
-                    // Primitive logic: find which file we are writing and match it to a step?
-                    // For now, just keep the plan pane updated with "in-progress" markers.
+                // Incremental file parsing for "Seeding" effect
+                const currentChanges = parseAIResponse(fullContent);
+                if (currentChanges && currentChanges.length > 0) {
+                    currentChanges.forEach((change: any) => {
+                        // Only set as pending if it's a complete file block or we want real-time diff
+                        useBuilderStore.getState().setPendingFile(change.path, change.content);
+                    });
                 }
             }
 
-            // Post-processing: Parse files and mark plan as complete
+            // Final sync and mark plan complete
             const steps = extractPlanSteps(fullContent);
             if (steps.length > 0) {
                 setPlanSteps(steps.map(s => ({ ...s, status: 'completed' })));
             }
 
             const changes = parseAIResponse(fullContent);
-
             if (changes && changes.length > 0) {
                 changes.forEach((change: any) => {
-                    upsertFile(change.path, change.content);
+                    useBuilderStore.getState().setPendingFile(change.path, change.content);
                 });
             }
 
@@ -245,7 +251,38 @@ STRICT RULES:
     ];
 
     return (
-        <div className="flex flex-col h-full bg-[#0a0a0c] overflow-hidden">
+        <div className="flex flex-col h-full bg-[#0a0a0c] overflow-hidden relative">
+            {/* Floating Bulk Action Bar */}
+            {pendingFiles.length > 0 && (
+                <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                    <div className="bg-[#1c1c21]/90 backdrop-blur-xl border border-indigo-500/30 rounded-2xl p-3 shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex items-center gap-6">
+                        <div className="pl-2">
+                            <div className="flex items-center gap-2 mb-0.5">
+                                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                                <span className="text-[10px] font-black text-white/90 uppercase tracking-widest">{pendingFiles.length} FIL {pendingFiles.length === 1 ? 'E' : 'ES'} SEEDED</span>
+                            </div>
+                            <p className="text-[9px] text-white/30 font-medium whitespace-nowrap">Review the diffs and choose an action</p>
+                        </div>
+
+                        <div className="flex items-center gap-2 pr-1">
+                            <button
+                                onClick={() => discardChanges()}
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black bg-white/5 text-white/60 hover:bg-white/10 transition-all border border-white/5"
+                            >
+                                <X className="w-3.5 h-3.5" />
+                                DISCARD ALL
+                            </button>
+                            <button
+                                onClick={() => acceptChanges()}
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black bg-indigo-600 text-white hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/30"
+                            >
+                                <Check className="w-3.5 h-3.5" />
+                                APPLY ALL
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             {/* Header with Mode Selector */}
             <div className="p-4 border-b border-white/5 bg-white/[0.02]">
                 <div className="flex items-center justify-between mb-4">
