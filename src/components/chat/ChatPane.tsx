@@ -172,11 +172,16 @@ export const ChatPane = () => {
 4. **Scaffold First**: If the project is empty, your first tool MUST be a shell scaffold (npm create vite etc).
 
 # SYSTEM CONTEXT PROTOCOL:
-1. **Zero-Waiting**: Do not ask for user confirmation. Proceed immediately to implementation.
-2. **Immediate Volition**: Start your first tool execution (\`bolt_tool\`) in your very first response.
-3. **Lead Engineer Mandate**: You are the architect. Make the most elite technical decisions.
+1. **MATERIAL VOLITION**: Narrative descriptions without accompanying tool calls or code blocks are defined as a MISSION FAILURE. You must lead with action.
+2. **ZERO-WAITING**: Do not ask for user confirmation. Proceed immediately to implementation.
+3. **LEAD ENGINEER MANDATE**: You are the architect. Make the most elite technical decisions. In Build mode, your first turn MUST include a scaffold tool.
 
-STRICT RULE: Focus on one-shot perfection. Be technical, decisive, and aesthetically elite. DO NOT ASK FOR PERMISSION. JUST BUILD.`;
+# FORMATTING MANDATE:
+- Rationales: Concise and professional.
+- Implementation: Use <bolt_tool> for all shell/npm actions. Use "### FILE: path" for code.
+- Plan: Wrap the initial strategy in <bolt_plan>.
+
+STRICT RULE: STOP TALKING. START BUILDING. MATERIALIZE THE ARCHITECTURE NOW.`;
 
                 currentMessages[0].content = systemPrompt;
 
@@ -282,10 +287,13 @@ STRICT RULE: Focus on one-shot perfection. Be technical, decisive, and aesthetic
                     // Update messages for next turn
                     currentMessages = [...currentMessages, { role: 'assistant', content: turnContent }, toolMessage];
                     hasMoreThinking = true;
-                } else if (mode === 'build' && turns === 1 && changes.length === 0) {
-                    // SELF-CORRECTION: If AI didn't do code in Turn 1 of Build, nudge it
-                    console.warn('[Agent Loop] AI failed to generate code in turn 1. Nudging...');
-                    const nudgeMessage = { role: 'system' as const, content: "[SYSTEM ADVISORY]: Your previous response provided a summary but no architectural changes. Please proceed IMMEDIATELY to scaffolding and implementation using <bolt_tool> or '### FILE'." };
+                } else if ((mode === 'build' || mode === 'fix') && turns <= 3 && changes.length === 0 && toolCalls.length === 0) {
+                    // CRITICAL SELF-CORRECTION: If AI didn't do code or tools in early turns, issued a strict command
+                    console.warn(`[Agent Loop] turn ${turns}: MISSION FAILURE detected (No Action). Issuing Command...`);
+                    const nudgeMessage = {
+                        role: 'system' as const,
+                        content: "[URGENT ADVISORY]: MISSION FAILURE. Your previous response contained narrative but ZERO tool calls or code blocks. Stop describing the plan and START EXECUTION. Use <bolt_tool type=\"shell\"> or '### FILE' immediately. DO NOT ASK FOR PERMISSION."
+                    };
                     addMessage(nudgeMessage);
                     currentMessages = [...currentMessages, { role: 'assistant', content: turnContent }, nudgeMessage];
                     hasMoreThinking = true;
