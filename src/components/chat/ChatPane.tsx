@@ -55,7 +55,7 @@ export const ChatPane = () => {
         files, upsertFile, currentPlan, setPlan, planSteps, setPlanSteps, updatePlanStep,
         projectName, setProjectName, projectId, setProject,
         pendingFiles, acceptChanges, discardChanges,
-        restoreCheckpoint, deleteCheckpoint
+        restoreCheckpoint, deleteCheckpoint, activeFile
     } = useBuilderStore();
     const [input, setInput] = useState('');
     const [mode, setMode] = useState<AgentMode>('build');
