@@ -149,7 +149,7 @@ RESPONSE STRUCTURE:
 3. **Implementation**:
    - Use "### FILE: path/to/file" followed by full code blocks for any code changes.
    - Use "<bolt_tool type='...'>description\ncontent</bolt_tool>" for environment actions.
-     - types: 'shell' (commands), 'npm' (installing packages), 'search' (grep).
+     - types: 'shell' (commands), 'npm' (installing packages), 'search' (grep), 'readDir' (list directory).
 4. **Conclusion**: Very short wrap-up.
 
 STRICT RULES:
@@ -247,6 +247,12 @@ STRICT RULES:
                 } catch (err) {
                     console.error(`[Agent] Tool execution failed: ${err}`);
                 }
+            }
+
+            // AUTO-START logic: If this was a build task, signal the editor to run
+            if (mode === 'build' || (messages.length < 5 && changes.length > 2)) {
+                console.log('[Agent] Project architected. Auto-starting preview...');
+                window.dispatchEvent(new CustomEvent('bolt-project-ready'));
             }
 
             // AUTO-SAVE LOGIC

@@ -124,7 +124,7 @@ export const EditorPane = () => {
         return () => clearTimeout(timeoutId);
     }, [files]);
 
-    const runProject = async () => {
+    const runProject = useCallback(async () => {
         setIsRunning(true);
         try {
             const wc = await getWebContainer();
@@ -132,15 +132,45 @@ export const EditorPane = () => {
             const activeShell = shellsRef.current[activeTerminalId];
             if (activeShell) {
                 const writer = activeShell.input.getWriter();
-                writer.write('npm run dev\n');
+                // Send Ctrl+C first to clear any running process, then start dev
+                await writer.write('\x03'); // Ctrl+C
+                await new Promise(r => setTimeout(r, 100));
+                await writer.write('npm run dev\n');
                 writer.releaseLock();
+            } else {
+                console.warn('[Run] No active shell found for terminal:', activeTerminalId);
             }
         } catch (err) {
             console.error('Run failed:', err);
         } finally {
             setIsRunning(false);
         }
-    };
+    }, [activeTerminalId]);
+
+    useEffect(() => {
+        const handleProjectReady = () => {
+            console.log('[Editor] Project Ready Signal Received. Auto-starting...');
+            setShowTerminal(true);
+            runProject();
+        };
+
+        window.addEventListener('bolt-project-ready', handleProjectReady);
+        return () => window.removeEventListener('bolt-project-ready', handleProjectReady);
+    }, [runProject]);
+
+    // AUTO-RUN ON CHANGES (Accepted AI suggestions or manual edits)
+    useEffect(() => {
+        if (files.length > 0 && !isRunning) {
+            const timer = setTimeout(() => {
+                // Only auto-run if we have an active terminal and shell
+                if (shellsRef.current[activeTerminalId]) {
+                    console.log('[AutoRun] Changes detected. Restarting dev server...');
+                    runProject();
+                }
+            }, 5000); // Wait 5s after changes to avoid sync conflicts
+            return () => clearTimeout(timer);
+        }
+    }, [files, runProject, activeTerminalId]);
 
     return (
         <div className="flex flex-col h-full bg-[#0a0a0c] overflow-hidden">

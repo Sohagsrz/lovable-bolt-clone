@@ -1,45 +1,55 @@
 import { getWebContainer } from '@/lib/webcontainer';
 
 export interface ToolAction {
-    type: 'shell' | 'file' | 'search' | 'npm';
+    type: 'shell' | 'file' | 'search' | 'npm' | 'readDir';
     content: string;
     description: string;
 }
 
 export class ToolService {
     static async executeShell(command: string): Promise<string> {
-        const wc = await getWebContainer();
-        const process = await wc.spawn('jsh', ['-c', command]);
+        try {
+            const wc = await getWebContainer();
+            const process = await wc.spawn('jsh', ['-c', command]);
 
-        let output = '';
-        process.output.pipeTo(new WritableStream({
-            write(data) { output += data; }
-        }));
+            let output = '';
+            process.output.pipeTo(new WritableStream({
+                write(data) { output += data; }
+            }));
 
-        const exitCode = await process.exit;
-        if (exitCode !== 0) {
-            throw new Error(`Command failed with exit code ${exitCode}: ${output}`);
+            const exitCode = await process.exit;
+            if (exitCode !== 0) {
+                return `[Error] Exit code ${exitCode}: ${output} `;
+            }
+            return output || "Done (no output)";
+        } catch (err: any) {
+            return `[Execution Error] ${err.message} `;
         }
-        return output;
     }
 
     static async execute(action: ToolAction): Promise<string> {
-        console.log(`[ToolService] Executing ${action.type}: ${action.description}`);
+        console.log(`[ToolService] Executing ${action.type}: ${action.description} `);
+
+        const wc = await getWebContainer();
 
         switch (action.type) {
             case 'shell':
                 return await this.executeShell(action.content);
             case 'npm':
-                return await this.executeShell(`npm install ${action.content}`);
+                return await this.executeShell(`npm install ${action.content} `);
             case 'search':
-                // Simple grep implementation via shell
-                return await this.executeShell(`grep -r "${action.content}" .`);
+                return await this.executeShell(`grep - r "${action.content}".`);
             case 'file':
-                // This is usually handled by the parser, but we can add a 'read' capability
-                const wc = await getWebContainer();
-                return await wc.fs.readFile(action.content, 'utf-8');
+                try {
+                    return await wc.fs.readFile(action.content, 'utf-8');
+                } catch (e) { return `[File Error] Could not read file: ${action.content} `; }
+            case 'readDir':
+                try {
+                    const entries = await wc.fs.readdir(action.content || '.', { withFileTypes: true });
+                    return entries.map(e => `${e.isDirectory() ? '[DIR] ' : '[FILE]'} ${e.name} `).join('\n');
+                } catch (e) { return `[FS Error] Could not read directory: ${action.content} `; }
             default:
-                throw new Error(`Unknown tool type: ${action.type}`);
+                throw new Error(`Unknown tool type: ${action.type} `);
         }
     }
 
