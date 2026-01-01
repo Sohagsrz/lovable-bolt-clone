@@ -1,7 +1,7 @@
 import { getWebContainer } from '@/lib/webcontainer';
 
 export interface ToolAction {
-    type: 'shell' | 'file' | 'search' | 'npm' | 'readDir';
+    type: 'shell' | 'file' | 'search' | 'npm' | 'readDir' | 'find';
     content: string;
     description: string;
 }
@@ -47,9 +47,12 @@ export class ToolService {
                 try {
                     const entries = await wc.fs.readdir(action.content || '.', { withFileTypes: true });
                     return entries.map(e => `${e.isDirectory() ? '[DIR] ' : '[FILE]'} ${e.name} `).join('\n');
-                } catch (e) { return `[FS Error] Could not read directory: ${action.content} `; }
+                } catch (e) { return `[FS Error] Could not read directory: ${action.content}`; }
+            case 'find':
+                // Search for files by name/pattern
+                return await this.executeShell(`find . -maxdepth 4 -name "${action.content}"`);
             default:
-                throw new Error(`Unknown tool type: ${action.type} `);
+                throw new Error(`Unknown tool type: ${action.type}`);
         }
     }
 
