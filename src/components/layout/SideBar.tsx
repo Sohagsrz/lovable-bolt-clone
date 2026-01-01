@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 export const SideBar = () => {
     const router = useRouter();
     const [userProjects, setUserProjects] = React.useState<any[]>([]);
-    const { files, activeFile, setActiveFile, reset, setProject, projectName, projectId, checkpoints, addCheckpoint, restoreCheckpoint } = useBuilderStore();
+    const { messages, files, activeFile, setActiveFile, reset, setProject, projectName, projectId, checkpoints, addCheckpoint, restoreCheckpoint } = useBuilderStore();
     const { data: session } = useSession();
     const [view, setView] = useState<'projects' | 'activity'>('projects');
     const [isDeployOpen, setIsDeployOpen] = useState(false);
@@ -48,8 +48,27 @@ export const SideBar = () => {
 
     const isLiveWorkspace = !projectId;
 
-    const usageCount = (session?.user as any)?.usageCount || 0;
-    const usageLimit = (session?.user as any)?.usageLimit || 100;
+    const usageCountSession = (session?.user as any)?.usageCount || 0;
+    const usageLimitSession = (session?.user as any)?.usageLimit || 100;
+
+    const [liveUsage, setLiveUsage] = useState({ count: usageCountSession, limit: usageLimitSession });
+
+    // Fetch live usage
+    React.useEffect(() => {
+        if (session) {
+            fetch('/api/user/usage')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.usageCount !== undefined) {
+                        setLiveUsage({ count: data.usageCount, limit: data.usageLimit });
+                    }
+                })
+                .catch(() => { });
+        }
+    }, [session, messages.length]); // Refresh when new messages are added (likely incremented usage)
+
+    const usageCount = liveUsage.count;
+    const usageLimit = liveUsage.limit;
     const progress = (usageCount / usageLimit) * 100;
 
     const activityLogs = [
