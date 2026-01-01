@@ -6,11 +6,12 @@ import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 
 interface TerminalProps {
+    id: string;
     onReady?: (terminal: XTerm) => void;
     className?: string;
 }
 
-export const Terminal: React.FC<TerminalProps> = ({ onReady, className }) => {
+export const Terminal: React.FC<TerminalProps> = ({ id, onReady, className }) => {
     const terminalRef = useRef<HTMLDivElement>(null);
     const xtermRef = useRef<XTerm | null>(null);
 
@@ -46,6 +47,9 @@ export const Terminal: React.FC<TerminalProps> = ({ onReady, className }) => {
         });
 
         xtermRef.current = term;
+        if (id) {
+            (window as any)[`term_${id}`] = term;
+        }
 
         if (onReady) {
             onReady(term);

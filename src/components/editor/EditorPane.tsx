@@ -55,26 +55,29 @@ export const EditorPane = () => {
             shellsRef.current[termId] = shellProcess;
 
             // Pipe shell output to terminal
-            shellProcess.output.pipeTo(new WritableStream({
+            const outputStream = new WritableStream({
                 write(data) {
-                    term.write(data);
+                    if (term && term.element) {
+                        term.write(data);
+                    }
                     if (data.includes('error') || data.includes('Failed')) {
                         window.dispatchEvent(new CustomEvent('terminal-error', { detail: { error: data } }));
                     }
                 }
-            }));
+            });
+
+            shellProcess.output.pipeTo(outputStream);
 
             // Pipe terminal input to shell safely
             term.onData((data) => {
                 const shell = shellsRef.current[termId];
                 if (shell) {
                     const writer = shell.input.getWriter();
-                    writer.write(data);
-                    writer.releaseLock();
+                    writer.write(data).then(() => writer.releaseLock()).catch(() => writer.releaseLock());
                 }
             });
 
-            term.writeln('\x1b[1;34m⚡ Terminal Ready\x1b[0m');
+            term.writeln('\x1b[1;34m⚡ Architect Terminal Ready\x1b[0m');
 
         } catch (e) {
             console.error('Shell start failed:', e);
@@ -125,32 +128,48 @@ export const EditorPane = () => {
     const runProject = useCallback(async () => {
         setIsRunning(true);
         try {
-            await seedFiles(); // Ensure files are fresh before running
+            const wc = await getWebContainer();
 
-            // Poll for active shell if missing (wait for terminal initialization)
+            // 1. Preparation logs in terminal
+            const term = activeTerminalId ? (window as any)[`term_${activeTerminalId}`] : null;
+            if (term) term.writeln('\x1b[1;33m[SYSTEM] Preparing environment...\x1b[0m');
+
+            await seedFiles();
+
             let activeShell = shellsRef.current[activeTerminalId];
             let retries = 0;
             while (!activeShell && retries < 10) {
-                console.log(`[Run] Waiting for terminal shell... (Attempt ${retries + 1})`);
+                if (term) term.write('.');
                 await new Promise(r => setTimeout(r, 500));
                 activeShell = shellsRef.current[activeTerminalId];
                 retries++;
             }
 
             if (activeShell) {
+                if (term) term.writeln('\n\x1b[1;32m[SYSTEM] Booting dev server...\x1b[0m');
+
                 try {
                     const writer = activeShell.input.getWriter();
-                    await writer.write('\x03'); // Ctrl+C to kill previous
-                    await new Promise(r => setTimeout(r, 300));
-                    await writer.write('npm run dev\n');
+                    await writer.write('\x03'); // Ctrl+C
+                    await new Promise(r => setTimeout(r, 500));
+
+                    // Check if we need npm install (basic heuristic)
+                    const hasPackageJson = files.some(f => f.path === 'package.json');
+                    const hasLockFile = files.some(f => f.path === 'package-lock.json' || f.path === 'yarn.lock');
+
+                    if (hasPackageJson && !hasLockFile) {
+                        if (term) term.writeln('\x1b[1;36m[SYSTEM] Fresh project. Running npm install...\x1b[0m');
+                        await writer.write('npm install && npm run dev\n');
+                    } else {
+                        await writer.write('npm run dev\n');
+                    }
+
                     writer.releaseLock();
-                    console.log('[Run] Started dev server');
                 } catch (e) {
                     console.error('[Run] Failed to write to shell input:', e);
-                    delete shellsRef.current[activeTerminalId];
                 }
             } else {
-                console.error('[Run] Could not find an active shell after retries.');
+                if (term) term.writeln('\x1b[1;31m\n✖ Error: Could not find an active shell session.\x1b[0m');
             }
         } catch (err) {
             console.error('Run failed:', err);
@@ -318,6 +337,7 @@ export const EditorPane = () => {
                                 className={`absolute inset-0 ${activeTerminalId === t.id ? 'block' : 'hidden'}`}
                             >
                                 <Terminal
+                                    id={t.id}
                                     onReady={(term) => handleTerminalReady(t.id, term)}
                                 />
                             </div>
