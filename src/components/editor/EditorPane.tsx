@@ -123,28 +123,45 @@ export const EditorPane = () => {
         return () => window.removeEventListener('bolt-fix-complete', handleFixComplete);
     }, [isRunning]);
 
-    // Sync changes to WebContainer
+    // Sync changes to WebContainer with Debounce to prevent WASM OOM
     useEffect(() => {
+        let timeoutId: NodeJS.Timeout;
+
         const syncFiles = async () => {
-            const wc = await getWebContainer();
-            for (const file of files) {
-                // Ensure directory exists
-                const parts = file.path.split('/');
-                if (parts.length > 1) {
-                    const dir = parts.slice(0, -1).join('/');
-                    if (dir) {
-                        try {
-                            await wc.fs.mkdir(dir, { recursive: true });
-                        } catch (e) {
-                            // Directory might exist
+            try {
+                const wc = await getWebContainer();
+
+                // We only sync if there are files
+                if (files.length === 0) return;
+
+                console.log('[WebContainer] Syncing files...');
+                for (const file of files) {
+                    const parts = file.path.split('/');
+                    if (parts.length > 1) {
+                        const dir = parts.slice(0, -1).join('/');
+                        if (dir) {
+                            try {
+                                await wc.fs.mkdir(dir, { recursive: true });
+                            } catch (e) { }
                         }
                     }
+                    await wc.fs.writeFile(file.path, file.content);
                 }
-                // Write file content
-                await wc.fs.writeFile(file.path, file.content);
+                console.log('[WebContainer] Sync complete');
+            } catch (err) {
+                console.error('[WebContainer] Sync failed:', err);
             }
         };
-        if (files.length > 0) syncFiles();
+
+        // Debounce: Only sync if no changes for 500ms
+        // This is critical when AI is "seeding" files fast
+        if (files.length > 0) {
+            timeoutId = setTimeout(syncFiles, 500);
+        }
+
+        return () => {
+            if (timeoutId) clearTimeout(timeoutId);
+        };
     }, [files]);
 
     const runProject = async () => {
