@@ -8,15 +8,16 @@ Bolt Studio is an advanced, AI-powered IDE and application builder inspired by B
 
 ### ✅ Ready & Implemented
 - **AI Architect Core**: Describes and builds full-stack React applications from scratch.
+- **Architectural Pacing**: Elite, deliberate cadence (4.5s inter-turn delay) for maximum observability and reasoning clarity.
+- **Elite Kinematics**: High-fidelity UI motion powered by Framer Motion, including layout-synchronized transitions and kinetic feedback.
+- **Integrated Terminal (XTerm)**: Real-time log streaming for AI-initiated commands and fully interactive user shell.
+- **Recursive Workspace Maintenance**: Advanced folder management in the Live Explorer with recursive deletion and state-synchronized cleanup.
 - **Interactive Execution Plan**: Bolt-style planning pane that shows step-by-step progress before implementation.
+- **Credit Protection (Nonce System)**: Consolidated billing using `X-Operation-Nonce`, charging only one credit per user-initiated operation regardless of turns.
 - **Live WebContainer Integration**: Runs Node.js applications directly in your browser with no local setup.
-- **Interactive Terminal (jsh)**: A fully functional shell to run commands, install npm packages, and debug.
-- **Real-time Preview Pane**: Live application preview with mobile/tablet/desktop responsive toggles.
-- **Monaco-powered Editor**: Professional-grade code editor with syntax highlighting and multi-file support.
 - **Auto-Fix Loop**: Automatically detects terminal errors and prompts the AI to fix them immediately.
 - **Streaming AI Responses**: Real-time code generation using Server-Sent Events (SSE).
 - **Project Persistence**: Saves your projects, messages, and files to a database via Prisma + PostgreSQL.
-- **Smart Model Selection**: Automatically switches between models based on task complexity.
 
 ### 🚧 Coming Soon (Work in Progress)
 - **Deployment logic**: Built-in integration for Vercel, Netlify, and Cloudflare Pages.
