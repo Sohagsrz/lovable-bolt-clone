@@ -142,9 +142,9 @@ export const StudioLayout = () => {
                                     <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 flex items-center justify-center mx-auto mb-6 border border-indigo-500/20">
                                         <Sparkles className="w-8 h-8 text-indigo-400" />
                                     </div>
-                                    <h2 className="text-xl font-black uppercase tracking-widest text-white mb-3">Studio Empty</h2>
-                                    <p className="text-white/30 text-xs font-medium leading-relaxed tracking-tight">
-                                        Enter an architectural objective in the architect panel to scaffold your production-ready workspace.
+                                    <h2 className="text-xl font-black uppercase tracking-[0.3em] text-white mb-3">BOLT STUDIO</h2>
+                                    <p className="text-white/30 text-[10px] font-bold uppercase tracking-[0.15em] leading-relaxed max-w-sm mx-auto">
+                                        The world's most advanced AI-native architectural engineering environment. Start architecting your masterpiece in the architect panel.
                                     </p>
                                 </div>
                             </div>
