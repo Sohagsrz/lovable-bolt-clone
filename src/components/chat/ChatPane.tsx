@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, User, Bot, Paperclip, Loader2, BrainCircuit, Terminal, Zap, Shield, Wand2, Rocket, CheckCircle2, FileCode, Check, X, RotateCcw, History, ChevronDown, ChevronRight, ClipboardCheck } from 'lucide-react';
+import { Send, Sparkles, User, Bot, Paperclip, Loader2, BrainCircuit, Terminal, Zap, Shield, Wand2, Rocket, CheckCircle2, FileCode, Check, X, RotateCcw, History, ChevronDown, ChevronRight, ClipboardCheck, AlertTriangle, RefreshCcw } from 'lucide-react';
 import { useBuilderStore } from '@/store/useBuilderStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
@@ -59,6 +59,7 @@ export const ChatPane = () => {
     } = useBuilderStore();
     const [input, setInput] = useState('');
     const [mode, setMode] = useState<AgentMode>('build');
+    const [lastError, setLastError] = useState<string | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     const summarizeHistory = async (msgs: any[]) => {
@@ -170,6 +171,19 @@ STRICT RULES:
                 })
             });
 
+            if (response.status === 403) {
+                const errorData = await response.json().catch(() => ({}));
+                if (errorData.message === 'Usage limit reached') {
+                    setLastError('usage_limit');
+                    setGenerating(false);
+                    addMessage({
+                        role: 'assistant',
+                        content: "You've reached your architect's limit. Please upgrade to Pro to continue building groundbreaking applications."
+                    });
+                    return;
+                }
+            }
+
             if (!response.ok) throw new Error('Failed to fetch AI');
             if (!response.body) throw new Error('No response body');
 
@@ -253,9 +267,21 @@ STRICT RULES:
         } catch (error) {
             console.error(error);
             setPlan(null);
-            addMessage({ role: 'assistant', content: "Lost connection to the brain. Please try again." });
+            setLastError('connection');
+            addMessage({
+                role: 'assistant',
+                content: "Lost connection to the brain. Please try again."
+            });
         } finally {
             setGenerating(false);
+        }
+    };
+
+    const handleRetry = () => {
+        const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+        if (lastUserMsg) {
+            setLastError(null);
+            handleSend(lastUserMsg.content);
         }
     };
 
@@ -474,6 +500,34 @@ STRICT RULES:
                                                     <RotateCcw className="w-3 h-3" />
                                                     Restore to Here
                                                 </button>
+                                            </div>
+                                        )}
+
+                                        {i === messages.length - 1 && lastError && (
+                                            <div className="mt-4 p-4 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                                                <div className="flex items-center gap-3 text-rose-400 mb-3">
+                                                    <AlertTriangle className="w-4 h-4" />
+                                                    <span className="text-[11px] font-black uppercase tracking-widest">
+                                                        {lastError === 'usage_limit' ? 'Quota Exceeded' : 'Connection Interrupted'}
+                                                    </span>
+                                                </div>
+
+                                                {lastError === 'usage_limit' ? (
+                                                    <button
+                                                        onClick={() => router.push('/pricing')}
+                                                        className="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[11px] font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-500/20"
+                                                    >
+                                                        Upgrade to Pro
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        onClick={handleRetry}
+                                                        className="flex items-center justify-center gap-2 w-full py-2 px-4 bg-white/5 hover:bg-white/10 text-white rounded-lg text-[11px] font-black uppercase tracking-widest transition-all border border-white/10"
+                                                    >
+                                                        <RefreshCcw className="w-3.5 h-3.5" />
+                                                        Try Again
+                                                    </button>
+                                                )}
                                             </div>
                                         )}
 
