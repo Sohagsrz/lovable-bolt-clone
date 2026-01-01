@@ -50,65 +50,95 @@ export const StudioLayout = () => {
     };
 
     return (
-        <div className="h-screen w-screen bg-[#0a0a0c] overflow-hidden text-white font-sans selection:bg-indigo-500/30 flex relative">
-            {/* Floating Sidebar Trigger (Shows when collapsed) */}
-            {hasFiles && isSidebarCollapsed && (
-                <button
-                    onClick={toggleSidebar}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 z-[60] w-8 h-20 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 hover:border-indigo-500/40 rounded-full flex flex-col items-center justify-center gap-2 group transition-all animate-in slide-in-from-left-4 duration-500 backdrop-blur-md"
+        <div className="h-screen w-screen bg-[#0a0a0c] overflow-hidden text-white font-sans selection:bg-indigo-500/30 flex flex-col relative">
+            {/* Desktop Header */}
+            <div className="h-12 border-b border-white/5 flex items-center justify-between px-6 bg-[#0a0a0c] z-50">
+                <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-lg bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                            <SidebarIcon className="w-3.5 h-3.5 text-white" />
+                        </div>
+                        <div className="font-black text-[11px] tracking-[0.3em] text-white uppercase antialiased">BOLT STUDIO</div>
+                    </div>
+
+                    {/* Breadcrumbs/Project Name */}
+                    <div className="h-4 w-px bg-white/10 hidden md:block" />
+                    <div className="hidden md:flex items-center gap-2 text-[10px] font-bold text-white/40 uppercase tracking-widest">
+                        <Code2 className="w-3.5 h-3.5" />
+                        <span>Project</span>
+                        <ChevronRight className="w-3 h-3" />
+                        <span className="text-white/80">{useBuilderStore.getState().projectName}</span>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[9px] font-black uppercase tracking-wider text-white/50">Engine Active</span>
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex-1 flex overflow-hidden relative">
+                {/* Floating Sidebar Trigger (Shows when collapsed) */}
+                {hasFiles && isSidebarCollapsed && (
+                    <button
+                        onClick={toggleSidebar}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 z-[60] w-8 h-20 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 hover:border-indigo-500/40 rounded-full flex flex-col items-center justify-center gap-2 group transition-all animate-in slide-in-from-left-4 duration-500 backdrop-blur-md"
+                    >
+                        <SidebarIcon className="w-3.5 h-3.5 text-indigo-400 group-hover:scale-110 transition-transform" />
+                        <ChevronRight className="w-3 h-3 text-indigo-400 animate-pulse" />
+                    </button>
+                )}
+
+                <PanelGroup
+                    key={layoutKey}
+                    direction="horizontal"
+                    autoSaveId={layoutKey}
                 >
-                    <SidebarIcon className="w-3.5 h-3.5 text-indigo-400 group-hover:scale-110 transition-transform" />
-                    <ChevronRight className="w-3 h-3 text-indigo-400 animate-pulse" />
-                </button>
-            )}
+                    {hasFiles && (
+                        <>
+                            <Panel
+                                ref={sidebarRef}
+                                id="sidebar"
+                                defaultSize={12}
+                                minSize={8}
+                                maxSize={18}
+                                collapsible
+                                onCollapse={() => setIsSidebarCollapsed(true)}
+                                onExpand={() => setIsSidebarCollapsed(false)}
+                            >
+                                <SideBar />
+                            </Panel>
+                            {!isSidebarCollapsed && <ResizeHandle />}
+                        </>
+                    )}
 
-            <PanelGroup
-                key={layoutKey}
-                direction="horizontal"
-                autoSaveId={layoutKey}
-            >
-                {hasFiles && (
-                    <>
-                        <Panel
-                            ref={sidebarRef}
-                            id="sidebar"
-                            defaultSize={12}
-                            minSize={8}
-                            maxSize={18}
-                            collapsible
-                            onCollapse={() => setIsSidebarCollapsed(true)}
-                            onExpand={() => setIsSidebarCollapsed(false)}
-                        >
-                            <SideBar />
-                        </Panel>
-                        {!isSidebarCollapsed && <ResizeHandle />}
-                    </>
-                )}
+                    <Panel id="chat" defaultSize={hasFiles ? 22 : 100} minSize={hasFiles ? 15 : 20} maxSize={hasFiles ? 35 : 100}>
+                        <ChatPane />
+                    </Panel>
 
-                <Panel id="chat" defaultSize={hasFiles ? 22 : 100} minSize={hasFiles ? 15 : 20} maxSize={hasFiles ? 35 : 100}>
-                    <ChatPane />
-                </Panel>
+                    {hasFiles && (
+                        <>
+                            <ResizeHandle />
+                            <Panel id="explorer" defaultSize={15} minSize={10} maxSize={25} collapsible>
+                                <FileExplorer />
+                            </Panel>
 
-                {hasFiles && (
-                    <>
-                        <ResizeHandle />
-                        <Panel id="explorer" defaultSize={15} minSize={10} maxSize={25} collapsible>
-                            <FileExplorer />
-                        </Panel>
+                            <ResizeHandle />
+                            <Panel id="editor" defaultSize={35} minSize={20}>
+                                <EditorPane />
+                            </Panel>
 
-                        <ResizeHandle />
-                        <Panel id="editor" defaultSize={35} minSize={20}>
-                            <EditorPane />
-                        </Panel>
+                            <ResizeHandle />
 
-                        <ResizeHandle />
-
-                        <Panel id="preview" defaultSize={20} minSize={10} maxSize={40} collapsible>
-                            <PreviewPane />
-                        </Panel>
-                    </>
-                )}
-            </PanelGroup>
+                            <Panel id="preview" defaultSize={20} minSize={10} maxSize={40} collapsible>
+                                <PreviewPane />
+                            </Panel>
+                        </>
+                    )}
+                </PanelGroup>
+            </div>
         </div>
     );
 };
