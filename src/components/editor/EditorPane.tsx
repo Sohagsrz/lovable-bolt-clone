@@ -39,11 +39,18 @@ export const EditorPane = () => {
     }, [!!pending, activeFile]);
 
     const handleTerminalReady = useCallback(async (termId: string, term: XTerm) => {
+        // Immediate visual feedback
+        term.writeln('\x1b[1;34m⚡ Architect Terminal Initializing...\x1b[0m');
+        term.writeln('\x1b[1;30m[SYSTEM]: Attaching to WebContainer engine...\x1b[0m');
+
         try {
             const wc = await getWebContainer();
 
             // Check if we already have a shell for this terminal
-            if (shellsRef.current[termId]) return;
+            if (shellsRef.current[termId]) {
+                term.writeln('\x1b[1;32m✔ Connected to active shell.\x1b[0m');
+                return;
+            }
 
             const shellProcess = await wc.spawn('jsh', {
                 terminal: {
@@ -77,7 +84,8 @@ export const EditorPane = () => {
                 }
             });
 
-            term.writeln('\x1b[1;34m⚡ Architect Terminal Ready\x1b[0m');
+            term.writeln('\x1b[1;32m✔ Architect Terminal Live\x1b[0m');
+            term.write('\n'); // Space for next command
 
         } catch (e) {
             console.error('Shell start failed:', e);

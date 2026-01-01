@@ -42,14 +42,6 @@ export const Terminal: React.FC<TerminalProps> = ({ id, isActive, onReady, class
         // Open terminal in element
         term.open(terminalRef.current);
 
-        requestAnimationFrame(() => {
-            try {
-                fitAddon.fit();
-            } catch (e) {
-                console.warn('XTerm fit failed:', e);
-            }
-        });
-
         xtermRef.current = term;
         if (id) {
             (window as any)[`term_${id}`] = term;
@@ -59,30 +51,27 @@ export const Terminal: React.FC<TerminalProps> = ({ id, isActive, onReady, class
             onReady(term);
         }
 
-        const handleResize = () => {
-            try {
-                fitAddon.fit();
-            } catch (e) { }
-        };
+        // Use ResizeObserver for more reliable fitting
+        const resizeObserver = new ResizeObserver(() => {
+            if (terminalRef.current && terminalRef.current.offsetWidth > 0) {
+                try {
+                    fitAddon.fit();
+                } catch (e) {
+                    // Silently fail if fit is called while element is still weirdly sized
+                }
+            }
+        });
 
-        window.addEventListener('resize', handleResize);
+        resizeObserver.observe(terminalRef.current);
 
         return () => {
-            window.removeEventListener('resize', handleResize);
+            resizeObserver.disconnect();
             term.dispose();
             xtermRef.current = null;
             fitAddonRef.current = null;
+            if (id) delete (window as any)[`term_${id}`];
         };
-    }, [id, onReady]);
-
-    // Handle visibility changes
-    useEffect(() => {
-        if (isActive && fitAddonRef.current) {
-            requestAnimationFrame(() => {
-                fitAddonRef.current?.fit();
-            });
-        }
-    }, [isActive]);
+    }, [id]); // Only re-run if ID changes
 
     return <div ref={terminalRef} className={`w-full h-full ${className}`} />;
 };
