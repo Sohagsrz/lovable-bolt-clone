@@ -270,8 +270,12 @@ STRICT RULE: Focus on one-shot perfection. Be technical, decisive, and aesthetic
 
                     // Final finish
                     const changes = parseAIResponse(turnContent);
-                    if (mode === 'build' || (messages.length < 5 && changes.length > 2)) {
-                        window.dispatchEvent(new CustomEvent('bolt-project-ready'));
+                    const totalChanges = changes.length;
+
+                    if (totalChanges > 0 || mode === 'build') {
+                        window.dispatchEvent(new CustomEvent('bolt-project-ready', {
+                            detail: { count: totalChanges }
+                        }));
                     }
 
                     const currentFiles = useBuilderStore.getState().files;
@@ -594,17 +598,40 @@ STRICT RULE: Focus on one-shot perfection. Be technical, decisive, and aesthetic
                                             </div>
                                         )}
 
-                                        {/* Show granular file edits like Cursor */}
-                                        {msg.content.includes('### FILE:') && (
-                                            <div className="mt-4 pt-4 border-t border-white/5">
-                                                <div className="flex items-center gap-2 mb-2 text-[10px] font-black text-indigo-400 uppercase tracking-widest">
+                                        {/* Post-Architectural Broadcast HUD */}
+                                        {msg.role === 'assistant' && msg.content.includes('### FILE:') && i === messages.length - 1 && !isGenerating && (
+                                            <div className="mt-4 pt-4 border-t border-white/5 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <div className="flex items-center gap-2 text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                                                        Architectural Broadcast
+                                                    </div>
+                                                    <div className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[9px] font-black text-emerald-400 uppercase tracking-widest">
+                                                        Synced to Production
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {extractEditedFiles(msg.content).map((file, idx) => (
+                                                        <div key={idx} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/[0.03] border border-white/5 text-[11px] font-bold text-white/40 hover:text-indigo-300 hover:bg-indigo-500/10 hover:border-indigo-500/20 transition-all group cursor-default">
+                                                            <FileCode className="w-3.5 h-3.5 text-indigo-500/50 group-hover:text-indigo-400" />
+                                                            {file}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Legacy inline file list (only if NOT the last message broadcast) */}
+                                        {msg.content.includes('### FILE:') && (i !== messages.length - 1 || isGenerating) && (
+                                            <div className="mt-4 pt-4 border-t border-white/5 opacity-40 italic">
+                                                <div className="flex items-center gap-2 mb-2 text-[10px] font-black text-white/30 uppercase tracking-widest">
                                                     <Wand2 className="w-3 h-3" />
-                                                    Implementation complete
+                                                    Implementation Summary
                                                 </div>
                                                 <div className="flex flex-wrap gap-2">
                                                     {extractEditedFiles(msg.content).map((file, idx) => (
-                                                        <div key={idx} className="flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 border border-white/5 text-[11px] font-medium text-white/50 hover:text-white/80 hover:bg-white/10 transition-colors">
-                                                            <FileCode className="w-3 h-3 text-indigo-400/70" />
+                                                        <div key={idx} className="flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 border border-white/5 text-[11px] font-medium text-white/30">
+                                                            <FileCode className="w-3 h-3" />
                                                             {file}
                                                         </div>
                                                     ))}

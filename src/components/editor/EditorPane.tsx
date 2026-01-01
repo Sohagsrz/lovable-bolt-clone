@@ -113,10 +113,6 @@ export const EditorPane = () => {
                 lastSyncedRef.current[file.path] = file.content;
             }
 
-            // Trigger visual notification
-            setSyncNotification({ count: pendingChanges.length });
-            setTimeout(() => setSyncNotification(null), 3000);
-
         } catch (err) {
             console.error('[WebContainer] Seeding failed:', err);
         }
@@ -182,16 +178,23 @@ export const EditorPane = () => {
     }, [activeTerminalId, seedFiles]);
 
     useEffect(() => {
-        const handleProjectReady = async () => {
-            console.log('[Editor] Project Ready Signal Received. Auto-starting...');
+        const handleProjectReady = async (e: any) => {
+            const count = e.detail?.count || 0;
+            console.log(`[Editor] Project Ready Signal Received (${count} changes). Auto-starting...`);
+
+            if (count > 0) {
+                setSyncNotification({ count });
+                setTimeout(() => setSyncNotification(null), 4000);
+            }
+
             setShowTerminal(true);
-            await seedFiles(); // Ensure files are seeded before running
+            await seedFiles();
             runProject();
         };
 
         window.addEventListener('bolt-project-ready', handleProjectReady);
         return () => window.removeEventListener('bolt-project-ready', handleProjectReady);
-    }, [runProject]);
+    }, [runProject, seedFiles]);
 
     const lastTriggeredContentRef = useRef<string>('');
 
