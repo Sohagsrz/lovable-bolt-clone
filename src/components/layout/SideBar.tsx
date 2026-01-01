@@ -172,28 +172,24 @@ export const SideBar = () => {
                             </div>
                         </section>
 
-                        {/* Current Files Section */}
+                        {/* History Section */}
                         <section>
-                            <h3 className="px-3 mb-2 text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">Live Workspace</h3>
-                            {files.length === 0 ? (
-                                <div className="px-3 py-2 text-[11px] text-white/10">No active files...</div>
-                            ) : (
-                                <div className="space-y-0.5">
-                                    {files.map((file) => (
-                                        <button
-                                            key={file.path}
-                                            onClick={() => setActiveFile(file.path)}
-                                            className={`w-full flex items-center gap-3 px-3 py-2 text-[12px] rounded-lg transition-all ${activeFile === file.path
-                                                ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20'
-                                                : 'text-white/30 hover:bg-white/5 hover:text-white/60'
-                                                }`}
-                                        >
-                                            <FileCode className={`w-3.5 h-3.5 ${activeFile === file.path ? 'text-indigo-400' : 'text-white/10'}`} />
-                                            <span className="truncate font-medium">{file.path}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
+                            <h3 className="px-3 mb-2 text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">Project Archive</h3>
+                            <div className="space-y-0.5">
+                                {Array.isArray(userProjects) && userProjects.map((p) => (
+                                    <button
+                                        key={p.id}
+                                        onClick={() => loadProject(p)}
+                                        className="w-full flex items-center gap-3 px-3 py-2 text-[12px] text-white/40 hover:bg-white/5 hover:text-white rounded-lg transition-all group"
+                                    >
+                                        <FileCode className="w-3.5 h-3.5 text-white/10 group-hover:text-indigo-400" />
+                                        <span className="truncate font-medium">{p.name}</span>
+                                    </button>
+                                ))}
+                                {(!Array.isArray(userProjects) || userProjects.length === 0) && (
+                                    <div className="px-3 py-2 text-[11px] text-white/10 italic">No saved projects</div>
+                                )}
+                            </div>
                         </section>
                     </div>
                 ) : (

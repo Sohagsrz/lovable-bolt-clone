@@ -7,7 +7,8 @@ import { EditorPane } from '@/components/editor/EditorPane';
 import { ChatPane } from '@/components/chat/ChatPane';
 import { PreviewPane } from '@/components/editor/PreviewPane';
 import { PlanPane } from '@/components/plan/PlanPane';
-import { GripVertical, MessageSquare, Code2, Play, Menu } from 'lucide-react';
+import { FileExplorer } from '@/components/editor/FileExplorer';
+import { MessageSquare, Code2, Play, Menu } from 'lucide-react';
 import { useBuilderStore } from '@/store/useBuilderStore';
 
 export const ResizeHandle = ({ className = "" }: { className?: string }) => (
@@ -29,7 +30,7 @@ export const StudioLayout = () => {
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    const layoutKey = `bolt-layout-v6-${hasFiles ? 'full' : 'empty'}-${hasPlan ? 'with-plan' : 'no-plan'}`;
+    const layoutKey = `bolt-layout-v8-${hasFiles ? 'full' : 'empty'}-${hasPlan ? 'with-plan' : 'no-plan'}`;
 
     if (isMobile) {
         return <MobileLayout />;
@@ -44,21 +45,21 @@ export const StudioLayout = () => {
             >
                 {hasFiles && (
                     <>
-                        <Panel id="sidebar" defaultSize={15} minSize={10} maxSize={20} collapsible>
+                        <Panel id="sidebar" defaultSize={12} minSize={8} maxSize={18} collapsible>
                             <SideBar />
                         </Panel>
                         <ResizeHandle />
                     </>
                 )}
 
-                <Panel id="chat" defaultSize={hasFiles ? (hasPlan ? 20 : 25) : 100} minSize={hasFiles ? 15 : 20} maxSize={hasFiles ? 40 : 100}>
+                <Panel id="chat" defaultSize={hasFiles ? (hasPlan ? 18 : 22) : 100} minSize={hasFiles ? 15 : 20} maxSize={hasFiles ? 35 : 100}>
                     <ChatPane />
                 </Panel>
 
                 {hasPlan && (
                     <>
                         <ResizeHandle />
-                        <Panel id="plan" defaultSize={18} minSize={10} maxSize={30} collapsible>
+                        <Panel id="plan" defaultSize={15} minSize={10} maxSize={25} collapsible>
                             <PlanPane />
                         </Panel>
                     </>
@@ -67,7 +68,12 @@ export const StudioLayout = () => {
                 {hasFiles && (
                     <>
                         <ResizeHandle />
-                        <Panel id="editor" defaultSize={40} minSize={20}>
+                        <Panel id="explorer" defaultSize={15} minSize={10} maxSize={25} collapsible>
+                            <FileExplorer />
+                        </Panel>
+
+                        <ResizeHandle />
+                        <Panel id="editor" defaultSize={35} minSize={20}>
                             <EditorPane />
                         </Panel>
 
