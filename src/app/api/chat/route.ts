@@ -6,6 +6,8 @@ import { parseAIResponse } from '@/lib/parser';
 
 // "Smart" model selection logic
 function selectSmartModel(messages: any[]) {
+    if (!messages || messages.length === 0) return 'gpt-4o-mini';
+
     const lastMessage = messages[messages.length - 1]?.content || "";
     const fullContextLength = JSON.stringify(messages).length;
 
@@ -13,7 +15,7 @@ function selectSmartModel(messages: any[]) {
     if (fullContextLength > 40000) return 'gpt-4o';
 
     // If user is asking to Build/Create/Refactor (Complex tasks), use gpt-4o
-    if (/(build|create|refactor|optimize|implement|architect)/i.test(lastMessage)) {
+    if (/(build|create|refactor|optimize|implement|architect|fix)/i.test(lastMessage)) {
         return 'gpt-4o';
     }
 
