@@ -171,26 +171,6 @@ export const SideBar = () => {
                                 )}
                             </div>
                         </section>
-
-                        {/* History Section */}
-                        <section>
-                            <h3 className="px-3 mb-2 text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">Project Archive</h3>
-                            <div className="space-y-0.5">
-                                {Array.isArray(userProjects) && userProjects.map((p) => (
-                                    <button
-                                        key={p.id}
-                                        onClick={() => loadProject(p)}
-                                        className="w-full flex items-center gap-3 px-3 py-2 text-[12px] text-white/40 hover:bg-white/5 hover:text-white rounded-lg transition-all group"
-                                    >
-                                        <FileCode className="w-3.5 h-3.5 text-white/10 group-hover:text-indigo-400" />
-                                        <span className="truncate font-medium">{p.name}</span>
-                                    </button>
-                                ))}
-                                {(!Array.isArray(userProjects) || userProjects.length === 0) && (
-                                    <div className="px-3 py-2 text-[11px] text-white/10 italic">No saved projects</div>
-                                )}
-                            </div>
-                        </section>
                     </div>
                 ) : (
                     <div className="py-4 px-2 space-y-4">
