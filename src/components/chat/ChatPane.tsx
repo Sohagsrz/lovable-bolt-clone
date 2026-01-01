@@ -202,10 +202,13 @@ STRICT RULE: Focus on one-shot perfection. Be technical, decisive, and aesthetic
 
                 setPlan(null);
 
-                // For the first turn, add the assistant bubble
-                if (turns === 1) {
-                    addMessage({ role: 'assistant', content: '', checkpointId });
-                }
+                // Add a new assistant message for EVERY turn of the AI
+                // This ensures we dont overwrite tool logs or previous turns
+                addMessage({
+                    role: 'assistant',
+                    content: '',
+                    checkpointId: turns === 1 ? checkpointId : undefined
+                });
 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();

@@ -18,12 +18,26 @@ export class ToolService {
             }));
 
             const exitCode = await process.exit;
+
+            // Post-execution: Detection of file creation (touch/mkdir/etc)
+            if (exitCode === 0 && (command.includes('touch') || command.includes('mkdir'))) {
+                const pathMatch = command.match(/(?:touch|mkdir(?:\s+-p)?)\s+([^\s;&|]+)/);
+                if (pathMatch && pathMatch[1]) {
+                    const filePath = pathMatch[1].replace(/^\.\//, '');
+                    // Only try to materialize 'touch' as it's a file
+                    if (command.startsWith('touch')) {
+                        const { useBuilderStore } = await import('@/store/useBuilderStore');
+                        useBuilderStore.getState().upsertFile(filePath, '');
+                    }
+                }
+            }
+
             if (exitCode !== 0) {
-                return `[Error] Exit code ${exitCode}: ${output} `;
+                return `[Error] Exit code ${exitCode}: ${output}`;
             }
             return output || "Done (no output)";
         } catch (err: any) {
-            return `[Execution Error] ${err.message} `;
+            return `[Execution Error] ${err.message}`;
         }
     }
 
