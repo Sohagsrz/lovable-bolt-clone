@@ -94,6 +94,8 @@ export const EditorPane = () => {
         };
     }, []);
 
+    const [syncNotification, setSyncNotification] = useState<{ count: number } | null>(null);
+
     const seedFiles = useCallback(async () => {
         try {
             const wc = await getWebContainer();
@@ -110,6 +112,11 @@ export const EditorPane = () => {
                 await wc.fs.writeFile(file.path, file.content);
                 lastSyncedRef.current[file.path] = file.content;
             }
+
+            // Trigger visual notification
+            setSyncNotification({ count: pendingChanges.length });
+            setTimeout(() => setSyncNotification(null), 3000);
+
         } catch (err) {
             console.error('[WebContainer] Seeding failed:', err);
         }
@@ -267,7 +274,7 @@ export const EditorPane = () => {
             </div>
 
             {/* Editor Area */}
-            <div className={`flex-1 overflow-hidden transition-all ${showTerminal ? 'h-1/2' : 'h-full'}`}>
+            <div className={`flex-1 overflow-hidden transition-all relative ${showTerminal ? 'h-1/2' : 'h-full'}`}>
                 {activeFile ? (
                     editorMode === 'diff' && pending ? (
                         <DiffEditor
@@ -305,6 +312,18 @@ export const EditorPane = () => {
                         <FileCode className="w-16 h-16 mb-6 opacity-20" />
                         <h3 className="text-xl font-black uppercase tracking-widest mb-2">No Active File</h3>
                         <p className="max-w-xs text-sm leading-relaxed italic opacity-50">Select a file from the explorer or start a build to see code here.</p>
+                    </div>
+                )}
+
+                {/* Sync Notification Popup */}
+                {syncNotification && (
+                    <div className="absolute bottom-6 right-6 z-[100] animate-in slide-in-from-bottom-2 fade-in duration-300">
+                        <div className="bg-indigo-600/20 backdrop-blur-xl border border-indigo-500/40 rounded-2xl px-5 py-3 shadow-2xl shadow-indigo-500/20 flex items-center gap-3 border-l-4 border-l-indigo-500">
+                            <div className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse shadow-[0_0_8px_rgba(129,140,248,0.8)]" />
+                            <span className="text-[10px] font-black text-indigo-100 uppercase tracking-[0.1em]">
+                                {syncNotification.count} {syncNotification.count === 1 ? 'FILE' : 'FILES'} SYNCED TO ENGINE
+                            </span>
+                        </div>
                     </div>
                 )}
             </div>
