@@ -40,6 +40,7 @@ interface BuilderState {
     setPlan: (plan: string | null) => void;
     setPlanSteps: (steps: PlanStep[]) => void;
     updatePlanStep: (id: string, updates: Partial<PlanStep>) => void;
+    setPreviewUrl: (url: string | null) => void;
     setProject: (id: string | null, name: string, files: FileNode[], messages: Message[]) => void;
     reset: () => void;
 
@@ -113,6 +114,9 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
         )
     })),
 
+    previewUrl: null,
+    setPreviewUrl: (url) => set({ previewUrl: url }),
+
     setProject: (id, name, files, messages) => set({
         projectId: id,
         projectName: name,
@@ -120,7 +124,8 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
         messages: messages,
         activeFile: files.length > 0 ? files[0].path : null,
         currentPlan: null,
-        planSteps: []
+        planSteps: [],
+        previewUrl: null
     }),
 
     reset: () => set({
@@ -136,7 +141,8 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
         activeFile: null,
         isGenerating: false,
         currentPlan: null,
-        planSteps: []
+        planSteps: [],
+        previewUrl: null
     }),
 
     getFileContent: (path) => {

@@ -6,12 +6,11 @@ import { getWebContainer } from '@/lib/webcontainer';
 import { useBuilderStore } from '@/store/useBuilderStore';
 
 export const PreviewPane = () => {
-    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const { previewUrl, setPreviewUrl, addMessage } = useBuilderStore();
     const [device, setDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isInspectMode, setIsInspectMode] = useState(false);
     const iframeRef = useRef<HTMLIFrameElement>(null);
-    const { addMessage } = useBuilderStore();
 
     useEffect(() => {
         let mounted = true;
@@ -20,9 +19,15 @@ export const PreviewPane = () => {
             try {
                 console.log('[PreviewPane] Initializing WebContainer listener...');
                 const wc = await getWebContainer();
+
+                // Re-check early if already ready (wc instance might hold state but standard API doesn't expose it easily)
+                // We mainly rely on the 'server-ready' event.
+
                 wc.on('server-ready', (port, url) => {
                     console.log('[PreviewPane] Server ready on port:', port, 'URL:', url);
-                    if (mounted) setPreviewUrl(url);
+                    if (mounted) {
+                        setPreviewUrl(url);
+                    }
                 });
                 console.log('[PreviewPane] WebContainer listener registered');
             } catch (err) {
@@ -32,7 +37,7 @@ export const PreviewPane = () => {
 
         init();
         return () => { mounted = false; };
-    }, []);
+    }, [setPreviewUrl]);
 
     // Listen for messages from the injected script inside the iframe
     useEffect(() => {
