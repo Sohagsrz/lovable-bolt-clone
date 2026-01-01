@@ -149,7 +149,7 @@ RESPONSE STRUCTURE:
 3. **Implementation**:
    - Use "### FILE: path/to/file" followed by full code blocks for any code changes.
    - Use "<bolt_tool type='...'>description\ncontent</bolt_tool>" for environment actions.
-     - types: 'shell' (commands), 'npm' (installing packages), 'search' (grep text), 'readDir' (list directory), 'find' (find files by name).
+     - types: 'shell' (commands), 'npm' (installing packages), 'search' (grep text), 'readDir' (list directory), 'find' (find files), 'webRead' (fetch URL content).
 4. **Conclusion**: Very short wrap-up.
 
 STRICT RULES:

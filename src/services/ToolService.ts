@@ -1,7 +1,7 @@
 import { getWebContainer } from '@/lib/webcontainer';
 
 export interface ToolAction {
-    type: 'shell' | 'file' | 'search' | 'npm' | 'readDir' | 'find';
+    type: 'shell' | 'file' | 'search' | 'npm' | 'readDir' | 'find' | 'webRead';
     content: string;
     description: string;
 }
@@ -51,6 +51,13 @@ export class ToolService {
             case 'find':
                 // Search for files by name/pattern
                 return await this.executeShell(`find . -maxdepth 4 -name "${action.content}"`);
+            case 'webRead':
+                try {
+                    const res = await fetch(action.content);
+                    const html = await res.text();
+                    // Basic HTML stripper for cleaner AI context
+                    return html.replace(/<[^>]*>?/gm, '').substring(0, 5000);
+                } catch (e) { return `[Web Error] Could not fetch URL: ${action.content}`; }
             default:
                 throw new Error(`Unknown tool type: ${action.type}`);
         }
