@@ -10,6 +10,7 @@ import { PlanPane } from '@/components/plan/PlanPane';
 import { FileExplorer } from '@/components/editor/FileExplorer';
 import { MessageSquare, Code2, Play, Menu, Sidebar as SidebarIcon, ChevronRight, Sparkles } from 'lucide-react';
 import { useBuilderStore } from '@/store/useBuilderStore';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export const ResizeHandle = ({ className = "" }: { className?: string }) => (
     <PanelResizeHandle className={`relative flex w-1 items-center justify-center bg-white/5 data-[resize-handle-state=hover]:bg-indigo-500/50 data-[resize-handle-state=drag]:bg-indigo-500 transition-all z-50 ${className}`}>
@@ -96,60 +97,96 @@ export const StudioLayout = () => {
                     direction="horizontal"
                     autoSaveId={layoutKey}
                 >
-                    <>
-                        <Panel
-                            ref={sidebarRef}
-                            id="sidebar"
-                            defaultSize={12}
-                            minSize={8}
-                            maxSize={18}
-                            collapsible
-                            onCollapse={() => setIsSidebarCollapsed(true)}
-                            onExpand={() => setIsSidebarCollapsed(false)}
+                    <Panel
+                        ref={sidebarRef}
+                        id="sidebar"
+                        defaultSize={12}
+                        minSize={8}
+                        maxSize={18}
+                        collapsible
+                        onCollapse={() => setIsSidebarCollapsed(true)}
+                        onExpand={() => setIsSidebarCollapsed(false)}
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="h-full"
                         >
                             <SideBar />
-                        </Panel>
-                        {!isSidebarCollapsed && <ResizeHandle />}
-                    </>
+                        </motion.div>
+                    </Panel>
+                    {!isSidebarCollapsed && <ResizeHandle />}
 
                     <Panel id="chat" defaultSize={hasFiles ? 22 : 30} minSize={20} maxSize={hasFiles ? 35 : 40}>
-                        <ChatPane />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.98 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="h-full"
+                        >
+                            <ChatPane />
+                        </motion.div>
                     </Panel>
 
-                    {hasFiles ? (
-                        <>
-                            <ResizeHandle />
-                            <Panel id="explorer" defaultSize={15} minSize={10} maxSize={25} collapsible>
-                                <FileExplorer />
-                            </Panel>
+                    <AnimatePresence mode="wait">
+                        {hasFiles ? (
+                            <Panel id="workspace" defaultSize={hasFiles ? 66 : 0}>
+                                <PanelGroup direction="horizontal">
+                                    <ResizeHandle />
+                                    <Panel id="explorer" defaultSize={15} minSize={10} maxSize={25} collapsible>
+                                        <FileExplorer />
+                                    </Panel>
 
-                            <ResizeHandle />
-                            <Panel id="editor" defaultSize={35} minSize={20}>
-                                <EditorPane />
-                            </Panel>
+                                    <ResizeHandle />
+                                    <Panel id="editor" defaultSize={35} minSize={20}>
+                                        <EditorPane />
+                                    </Panel>
 
-                            <ResizeHandle />
+                                    <ResizeHandle />
 
-                            <Panel id="preview" defaultSize={20} minSize={10} maxSize={40} collapsible>
-                                <PreviewPane />
+                                    <Panel id="preview" defaultSize={20} minSize={10} maxSize={40} collapsible>
+                                        <PreviewPane />
+                                    </Panel>
+                                </PanelGroup>
                             </Panel>
-                        </>
-                    ) : (
-                        // Placeholder panel to keep layout balanced when empty
-                        <Panel id="empty-workspace" defaultSize={70}>
-                            <div className="h-full w-full bg-[#0a0a0c] flex items-center justify-center p-12">
-                                <div className="max-w-md text-center">
-                                    <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 flex items-center justify-center mx-auto mb-6 border border-indigo-500/20">
-                                        <Sparkles className="w-8 h-8 text-indigo-400" />
+                        ) : (
+                            // Placeholder panel to keep layout balanced when empty
+                            <Panel id="empty-workspace" defaultSize={70}>
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    className="h-full w-full bg-[#0a0a0c] flex items-center justify-center p-12"
+                                >
+                                    <div className="max-w-md text-center">
+                                        <motion.div
+                                            initial={{ scale: 0.8, opacity: 0 }}
+                                            animate={{ scale: 1, opacity: 1 }}
+                                            transition={{ type: "spring", delay: 0.2 }}
+                                            className="w-16 h-16 rounded-2xl bg-indigo-500/10 flex items-center justify-center mx-auto mb-6 border border-indigo-500/20"
+                                        >
+                                            <Sparkles className="w-8 h-8 text-indigo-400" />
+                                        </motion.div>
+                                        <motion.h2
+                                            initial={{ y: 20, opacity: 0 }}
+                                            animate={{ y: 0, opacity: 1 }}
+                                            transition={{ delay: 0.3 }}
+                                            className="text-xl font-black uppercase tracking-[0.3em] text-white mb-3"
+                                        >
+                                            BOLT STUDIO
+                                        </motion.h2>
+                                        <motion.p
+                                            initial={{ y: 20, opacity: 0 }}
+                                            animate={{ y: 0, opacity: 1 }}
+                                            transition={{ delay: 0.4 }}
+                                            className="text-white/30 text-[10px] font-bold uppercase tracking-[0.15em] leading-relaxed max-w-sm mx-auto"
+                                        >
+                                            The world's most advanced AI-native architectural engineering environment. Start architecting your masterpiece in the architect panel.
+                                        </motion.p>
                                     </div>
-                                    <h2 className="text-xl font-black uppercase tracking-[0.3em] text-white mb-3">BOLT STUDIO</h2>
-                                    <p className="text-white/30 text-[10px] font-bold uppercase tracking-[0.15em] leading-relaxed max-w-sm mx-auto">
-                                        The world's most advanced AI-native architectural engineering environment. Start architecting your masterpiece in the architect panel.
-                                    </p>
-                                </div>
-                            </div>
-                        </Panel>
-                    )}
+                                </motion.div>
+                            </Panel>
+                        )}
+                    </AnimatePresence>
                 </PanelGroup>
             </div>
         </div>

@@ -156,6 +156,9 @@ export const ChatPane = () => {
 
             const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+            // Initial deliberate pause for "Architectural Calculation"
+            await sleep(1000);
+
             while (hasMoreThinking && turns < maxTurns) {
                 turns++;
                 const projectContext = generateProjectIndex(files);
@@ -299,8 +302,8 @@ STRICT RULE: STOP TALKING. START BUILDING. MATERIALIZE THE ARCHITECTURE NOW.`;
                     // Update messages for next turn
                     currentMessages = [...currentMessages, { role: 'assistant', content: turnContent }, toolMessage];
 
-                    // Add a small delay for readability
-                    await sleep(1200);
+                    // Add a professional deliberate delay for user readability
+                    await sleep(2400);
                     hasMoreThinking = true;
                 } else if ((mode === 'build' || mode === 'fix') && turns <= 3 && changes.length === 0 && toolCalls.length === 0) {
                     // CRITICAL SELF-CORRECTION
@@ -311,7 +314,7 @@ STRICT RULE: STOP TALKING. START BUILDING. MATERIALIZE THE ARCHITECTURE NOW.`;
                     addMessage(nudgeMessage);
                     currentMessages = [...currentMessages, { role: 'assistant', content: turnContent }, nudgeMessage];
 
-                    await sleep(1500);
+                    await sleep(2000);
                     hasMoreThinking = true;
                 } else if (turnContent === lastTurnContent && turns > 1) {
                     // Loop prevention
@@ -411,36 +414,50 @@ STRICT RULE: STOP TALKING. START BUILDING. MATERIALIZE THE ARCHITECTURE NOW.`;
     return (
         <div className="flex flex-col h-full bg-[#0a0a0c] overflow-hidden relative">
             {/* Floating Bulk Action Bar */}
-            {pendingFiles.length > 0 && (
-                <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                    <div className="bg-[#1c1c21]/90 backdrop-blur-xl border border-indigo-500/30 rounded-2xl p-3 shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex items-center gap-6">
-                        <div className="pl-2">
-                            <div className="flex items-center gap-2 mb-0.5">
-                                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                                <span className="text-[10px] font-black text-white/90 uppercase tracking-widest">{pendingFiles.length} FIL {pendingFiles.length === 1 ? 'E' : 'ES'} SEEDED</span>
+            <AnimatePresence>
+                {pendingFiles.length > 0 && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20, x: '-50%' }}
+                        animate={{ opacity: 1, y: 0, x: '-50%' }}
+                        exit={{ opacity: 0, y: 20, x: '-50%' }}
+                        transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                        className="absolute bottom-32 left-1/2 z-[100]"
+                    >
+                        <div className="bg-[#1c1c21]/95 backdrop-blur-2xl border border-indigo-500/40 rounded-3xl p-4 shadow-[0_12px_64px_rgba(0,0,0,0.8)] flex items-center gap-8 ring-1 ring-white/5">
+                            <div className="pl-2 border-r border-white/10 pr-6">
+                                <div className="flex items-center gap-3 mb-1">
+                                    <div className="w-5 h-5 rounded-full bg-indigo-500/20 flex items-center justify-center">
+                                        <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
+                                    </div>
+                                    <span className="text-[11px] font-black text-white/90 uppercase tracking-[0.2em]">{pendingFiles.length} {pendingFiles.length === 1 ? 'FILE' : 'FILES'} CRYSTALLIZED</span>
+                                </div>
+                                <p className="text-[9px] text-white/30 font-bold uppercase tracking-widest pl-8">Materialize architectural changes</p>
                             </div>
-                            <p className="text-[9px] text-white/30 font-medium whitespace-nowrap">Review the diffs and choose an action</p>
-                        </div>
 
-                        <div className="flex items-center gap-2 pr-1">
-                            <button
-                                onClick={() => discardChanges()}
-                                className="flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black bg-white/5 text-white/60 hover:bg-white/10 transition-all border border-white/5"
-                            >
-                                <X className="w-3.5 h-3.5" />
-                                DISCARD ALL
-                            </button>
-                            <button
-                                onClick={() => acceptChanges()}
-                                className="flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black bg-indigo-600 text-white hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/30"
-                            >
-                                <Check className="w-3.5 h-3.5" />
-                                APPLY ALL
-                            </button>
+                            <div className="flex items-center gap-3 pr-1">
+                                <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => discardChanges()}
+                                    className="flex items-center gap-2 px-5 py-2.5 rounded-2xl text-[11px] font-black bg-white/5 text-white/60 hover:text-white hover:bg-white/10 transition-all border border-white/5 uppercase tracking-widest"
+                                >
+                                    <X className="w-3.5 h-3.5" />
+                                    Purge
+                                </motion.button>
+                                <motion.button
+                                    whileHover={{ scale: 1.02, backgroundColor: '#4f46e5' }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => acceptChanges()}
+                                    className="flex items-center gap-2 px-6 py-2.5 rounded-2xl text-[11px] font-black bg-indigo-600 text-white transition-all shadow-xl shadow-indigo-600/30 uppercase tracking-widest"
+                                >
+                                    <Check className="w-3.5 h-3.5" />
+                                    COMMIT ALL
+                                </motion.button>
+                            </div>
                         </div>
-                    </div>
-                </div>
-            )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
             {/* Header with Mode Selector */}
             <div className="p-4 border-b border-white/5 bg-white/[0.02]">
                 <div className="flex items-center justify-between mb-4">
@@ -466,20 +483,25 @@ STRICT RULE: STOP TALKING. START BUILDING. MATERIALIZE THE ARCHITECTURE NOW.`;
                     </div>
                 </div>
 
-                <div className="flex gap-1 overflow-x-auto pb-1 no-scrollbar">
+                <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar p-1">
                     {modes.map((m) => {
                         const Icon = m.icon;
+                        const isActive = mode === m.id;
                         return (
                             <button
                                 key={m.id}
                                 onClick={() => setMode(m.id as AgentMode)}
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap border ${mode === m.id
-                                    ? 'bg-indigo-600/10 border-indigo-500/50 text-indigo-400'
-                                    : 'bg-white/5 border-transparent text-white/40 hover:text-white/60 hover:bg-white/10'
-                                    }`}
+                                className={`group relative flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black transition-all whitespace-nowrap uppercase tracking-widest leading-none ${isActive ? 'text-indigo-400' : 'text-white/30 hover:text-white/60'}`}
                             >
-                                <Icon className="w-3.5 h-3.5" />
-                                {m.label}
+                                {isActive && (
+                                    <motion.div
+                                        layoutId="mode-bg"
+                                        className="absolute inset-0 bg-indigo-600/10 border border-indigo-500/30 rounded-xl shadow-[0_0_15px_rgba(99,102,241,0.1)]"
+                                        transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
+                                    />
+                                )}
+                                <Icon className={`w-3.5 h-3.5 relative z-10 ${isActive ? 'scale-110' : 'group-hover:scale-110'} transition-transform`} />
+                                <span className="relative z-10">{m.label}</span>
                             </button>
                         );
                     })}
