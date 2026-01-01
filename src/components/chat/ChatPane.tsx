@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, User, Bot, Paperclip, Loader2, BrainCircuit, Terminal, Zap, Shield, Wand2, Rocket, CheckCircle2, FileCode, Check, X, RotateCcw, History, ChevronDown, ChevronRight, ClipboardCheck, AlertTriangle, RefreshCcw } from 'lucide-react';
+import { Send, Sparkles, User, Bot, Paperclip, Loader2, BrainCircuit, Terminal, Zap, Shield, Wand2, Rocket, CheckCircle2, FileCode, Check, X, RotateCcw, History, ChevronDown, ChevronRight, ClipboardCheck, AlertTriangle, RefreshCcw, Crown, ArrowRight } from 'lucide-react';
 import { useBuilderStore } from '@/store/useBuilderStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
@@ -408,6 +408,54 @@ STRICT RULE: Focus on one-shot perfection. Be technical, decisive, and aesthetic
 
             {/* Chat History */}
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
+                {/* Starter Suggestions for Fresh Projects */}
+                {messages.length === 1 && !isGenerating && (
+                    <div className="py-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-8 h-8 rounded-xl bg-indigo-600/10 flex items-center justify-center border border-indigo-500/20">
+                                <Rocket className="w-4 h-4 text-indigo-400" />
+                            </div>
+                            <div>
+                                <h3 className="text-white text-[11px] font-black uppercase tracking-[2px]">Quick Start Architects</h3>
+                                <p className="text-white/20 text-[9px] font-medium tracking-tight mt-0.5 uppercase">Select a blueprint to begin your masterwork</p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {[
+                                { title: 'SaaS Platform', icon: Crown, color: 'indigo', prompt: 'Build a premium SaaS landing page with a hero section, feature grid, and pricing table. Use a high-end dark theme with glassmorphism, Inter typography, and sleek animations.' },
+                                { title: 'AI Dashboard', icon: BrainCircuit, color: 'purple', prompt: 'Architect a data-driven AI analytics dashboard. Include a sidebar navigation, metric cards with real-time-like charts, and an activity log. Use a refined dark UI with indigo accents.' },
+                                { title: 'Design Portfolio', icon: Wand2, color: 'rose', prompt: 'Create an elite creative portfolio for an architectural designer. Focus on high-impact visual grids, smooth scroll animations, and a minimalist premium aesthetic.' },
+                                { title: 'E-commerce Hub', icon: Zap, color: 'amber', prompt: 'Build a boutique e-commerce storefront for high-end luxury goods. Implement a product grid, cart preview, and elegant checkout flow with premium typography.' }
+                            ].map((starter, idx) => {
+                                const Icon = starter.icon;
+                                return (
+                                    <button
+                                        key={idx}
+                                        onClick={() => {
+                                            if (starter.title.includes('AI') || starter.title.includes('Dashboard')) setMode('build');
+                                            handleSend(starter.prompt);
+                                        }}
+                                        className="group relative text-left p-4 rounded-[20px] bg-white/[0.02] border border-white/5 hover:border-white/20 hover:bg-white/[0.04] transition-all duration-300"
+                                    >
+                                        <div className="flex items-start gap-4">
+                                            <div className={`w-10 h-10 rounded-2xl bg-${starter.color}-500/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-500`}>
+                                                <Icon className={`w-5 h-5 text-${starter.color}-400`} />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-[12px] font-black text-white group-hover:text-indigo-400 transition-colors uppercase tracking-widest">{starter.title}</h4>
+                                                <p className="text-[10px] text-white/30 leading-relaxed mt-1 line-clamp-2">{starter.prompt}</p>
+                                            </div>
+                                        </div>
+                                        <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <ArrowRight className="w-3.5 h-3.5 text-white/20" />
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
                 <AnimatePresence>
                     {messages.map((msg, i) => (
                         <motion.div
