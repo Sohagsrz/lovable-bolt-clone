@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { parseAIResponse } from '@/lib/parser';
+import { generateProjectIndex } from '@/lib/indexer';
 
 import { useRouter } from "next/navigation";
 
@@ -58,6 +59,27 @@ export const ChatPane = () => {
     const [mode, setMode] = useState<AgentMode>('build');
     const scrollRef = useRef<HTMLDivElement>(null);
 
+    const summarizeHistory = async (msgs: any[]) => {
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messages: [
+                        { role: 'system', content: 'Summarize the following developer conversation. Focus on key decisions, implemented features, and project state. Keep it under 300 words.' },
+                        ...msgs
+                    ],
+                    mode: 'fix' // Use a fast mode for summarization
+                })
+            });
+            if (!response.ok) return null;
+            const data = await response.json(); // Assuming the endpoint returns a JSON if not streaming or we handle stream
+            // Since our /api/chat is streaming, we might need a non-streaming version or handle stream.
+            // For now, let's assume we can get the full text.
+            return data.content;
+        } catch { return null; }
+    };
+
     useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -98,9 +120,22 @@ export const ChatPane = () => {
         const checkpointId = useBuilderStore.getState().addCheckpoint(`Pre-Task: ${textToSend.slice(0, 30)}...`);
 
         try {
+            // Compress history if too long to save tokens
+            let historyToSend = [...messages];
+            if (historyToSend.length > 12) {
+                console.log('[Token Optimizer] Summarizing old context...');
+                // We'll keep the first message, last 4 context messages, and summarize the middle
+                const first = historyToSend[0];
+                const lastFew = historyToSend.slice(-4);
+                historyToSend = [first, { role: 'assistant', content: 'Conversation history summarized for context efficiency.' }, ...lastFew];
+            }
+
+            const projectContext = generateProjectIndex(files);
             const systemPrompt = `You are BOLT STUDIO, an elite AI architect.
 Project: ${projectName}
-Current Workspace: ${files.map(f => f.path).join(', ')}.
+
+WORKSPACE CONTEXT:
+${projectContext}
 
 RESPONSE STRUCTURE:
 1. **Human Summary**: Breifly explain the solution.
@@ -122,7 +157,7 @@ STRICT RULES:
                 body: JSON.stringify({
                     messages: [
                         { role: 'system', content: systemPrompt },
-                        ...messages,
+                        ...historyToSend,
                         userMessage
                     ],
                     mode: mode
