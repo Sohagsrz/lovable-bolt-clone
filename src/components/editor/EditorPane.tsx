@@ -188,17 +188,25 @@ export const EditorPane = () => {
 
     const lastTriggeredContentRef = useRef<string>('');
 
+    // Set initial baseline to avoid triggering on mount
+    useEffect(() => {
+        if (files.length > 0 && !lastTriggeredContentRef.current) {
+            lastTriggeredContentRef.current = files.map(f => `${f.path}:${f.content.length}`).join('|');
+        }
+    }, [files.length > 0]);
+
     // AUTO-RUN ON CHANGES (Accepted AI suggestions or manual edits)
     useEffect(() => {
         if (files.length > 0 && !isRunning) {
-            // Only trigger if content actually changed (avoid reference-change noise)
-            const currentHash = files.map(f => f.path + f.content.length).join('|');
+            // Fingerprint: Check path, length, and a slice of content to be sure
+            const currentHash = files.map(f => `${f.path}:${f.content.length}:${f.content.slice(0, 50)}`).join('|');
+
             if (currentHash === lastTriggeredContentRef.current) return;
 
             const timer = setTimeout(() => {
-                // Double check if we still have changes vs what was last run
+                // Final verify before run
                 if (currentHash !== lastTriggeredContentRef.current && shellsRef.current[activeTerminalId]) {
-                    console.log('[AutoRun] Real changes detected. Refreshing dev server...');
+                    console.log('[AutoRun] Real architectural changes detected. Refreshing dev server...');
                     lastTriggeredContentRef.current = currentHash;
                     runProject();
                 }
