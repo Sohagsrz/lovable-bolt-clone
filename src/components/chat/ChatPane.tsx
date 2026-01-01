@@ -153,6 +153,12 @@ export const ChatPane = () => {
 4. **Assets**: No broken placeholders. Use Unsplash: \`https://images.unsplash.com/photo-<ID>?auto=format&fit=crop&q=80&w=1200\` or categories: \`https://images.unsplash.com/featured/?<TAG>\`.
 5. **Quality**: Semantic HTML5, explicit SEO tagging, and baseline accessibility on every component.
 
+# BOOTSTRAP PROTOCOL (CRITICAL):
+If the WORKSPACE INDEX is empty or missing a \`package.json\`, your FIRST ACTION must be to scaffold the project.
+- Use \`<bolt_tool type="shell">npm create vite@latest . -- --template react-ts</bolt_tool>\` or similar.
+- Immediately install essential dev dependencies (\`tailwindcss\`, \`framer-motion\`, \`lucide-react\`).
+- DO NOT write feature code until the environment is initialized.
+
 # PROTOCOL:
 1. **Summary**: Technical rationale & design philosophy.
 2. **Plan**: Wrap in <bolt_plan> with concise <step /> tags.
