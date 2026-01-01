@@ -123,18 +123,20 @@ export const ChatPane = () => {
         const checkpointId = useBuilderStore.getState().addCheckpoint(`Pre-Task: ${textToSend.slice(0, 30)}...`);
 
         try {
-            // Compress history if too long to save tokens
-            let historyToSend = [...messages];
-            if (historyToSend.length > 12) {
-                console.log('[Token Optimizer] Summarizing old context...');
-                // We'll keep the first message, last 4 context messages, and summarize the middle
-                const first = historyToSend[0];
-                const lastFew = historyToSend.slice(-4);
-                historyToSend = [first, { role: 'assistant', content: 'Conversation history summarized for context efficiency.' }, ...lastFew];
-            }
+            let currentMessages = [
+                { role: 'system' as const, content: '' }, // Placeholder for system prompt
+                ...messages,
+                userMessage
+            ];
 
-            const projectContext = generateProjectIndex(files);
-            const systemPrompt = `You are BOLT STUDIO, an elite AI architect.
+            let hasMoreThinking = true;
+            let turns = 0;
+            const maxTurns = 3;
+
+            while (hasMoreThinking && turns < maxTurns) {
+                turns++;
+                const projectContext = generateProjectIndex(files);
+                const systemPrompt = `You are BOLT STUDIO, an elite AI architect.
 Project: ${projectName}
 
 WORKSPACE CONTEXT:
@@ -142,14 +144,14 @@ ${projectContext}
 
 RESPONSE STRUCTURE:
 1. **Human Summary**: Breifly explain the solution.
-2. **Technical Plan**: 
+2. **Technical Plan**:
    - Mandatory: wrap your structured plan in <bolt_plan> tags.
    - Each step should be: <step id="..." title="..." description="..." />
    - Keep steps concise but clear.
 3. **Implementation**:
    - Use "### FILE: path/to/file" followed by full code blocks for any code changes.
    - Use "<bolt_tool type='...'>description\ncontent</bolt_tool>" for environment actions.
-     - types: 'shell' (commands), 'npm' (installing packages), 'search' (grep text), 'readDir' (list directory), 'find' (find files), 'webRead' (fetch URL content).
+     - types: 'shell' (commands), 'npm' (installing packages), 'search' (grep text), 'readDir' (list directory), 'find' (find files), 'webRead' (fetch URL), 'webSearch' (search web).
 4. **Conclusion**: Very short wrap-up.
 
 STRICT RULES:
@@ -158,116 +160,110 @@ STRICT RULES:
 - If you need to install a package, use the <bolt_tool type="npm"> tool.
 - Be technical but extremely concise.`;
 
-            const response = await fetch('/api/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    messages: [
-                        { role: 'system', content: systemPrompt },
-                        ...historyToSend,
-                        userMessage
-                    ],
-                    mode: mode
-                })
-            });
+                currentMessages[0].content = systemPrompt;
 
-            if (response.status === 403) {
-                const errorData = await response.json().catch(() => ({}));
-                if (errorData.message === 'Usage limit reached') {
-                    setLastError('usage_limit');
-                    setGenerating(false);
-                    addMessage({
-                        role: 'assistant',
-                        content: "You've reached your architect's limit. Please upgrade to Pro to continue building groundbreaking applications."
-                    });
-                    return;
-                }
-            }
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        messages: currentMessages,
+                        mode: mode
+                    })
+                });
 
-            if (!response.ok) throw new Error('Failed to fetch AI');
-            if (!response.body) throw new Error('No response body');
-
-            setPlan(null);
-
-            // Initialize empty assistant message with the checkpoint reference
-            addMessage({ role: 'assistant', content: '', checkpointId });
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let done = false;
-            let fullContent = '';
-            let planExtracted = false;
-
-            while (!done) {
-                const { value, done: doneReading } = await reader.read();
-                done = doneReading;
-                const chunkValue = decoder.decode(value, { stream: !done });
-                fullContent += chunkValue;
-                updateLastMessageContent(fullContent);
-
-                // Try to extract plan steps as they stream
-                if (!planExtracted && fullContent.includes('</bolt_plan>')) {
-                    const steps = extractPlanSteps(fullContent);
-                    if (steps.length > 0) {
-                        setPlanSteps(steps);
-                        planExtracted = true;
-                        updatePlanStep(steps[0].id, { status: 'in-progress' });
+                if (response.status === 403) {
+                    const errorData = await response.json().catch(() => ({}));
+                    if (errorData.message === 'Usage limit reached') {
+                        setLastError('usage_limit');
+                        setGenerating(false);
+                        addMessage({
+                            role: 'assistant',
+                            content: "You've reached your architect's limit. Please upgrade to Pro to continue building groundbreaking applications."
+                        });
+                        return;
                     }
                 }
 
-                // Incremental file parsing for "Seeding" effect
-                const currentChanges = parseAIResponse(fullContent);
-                if (currentChanges && currentChanges.length > 0) {
-                    currentChanges.forEach((change: any) => {
-                        // Only set as pending if it's a complete file block or we want real-time diff
-                        useBuilderStore.getState().setPendingFile(change.path, change.content);
-                    });
+                if (!response.ok) throw new Error('Failed to fetch AI');
+                if (!response.body) throw new Error('No response body');
+
+                setPlan(null);
+
+                // For the first turn, add the assistant bubble
+                if (turns === 1) {
+                    addMessage({ role: 'assistant', content: '', checkpointId });
                 }
-            }
 
-            // Final sync and mark plan complete
-            const steps = extractPlanSteps(fullContent);
-            if (steps.length > 0) {
-                setPlanSteps(steps.map(s => ({ ...s, status: 'completed' })));
-            }
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let done = false;
+                let turnContent = '';
+                let planExtracted = false;
 
-            const changes = parseAIResponse(fullContent);
-            if (changes && changes.length > 0) {
-                changes.forEach((change: any) => {
-                    useBuilderStore.getState().setPendingFile(change.path, change.content);
-                });
-            }
+                while (!done) {
+                    const { value, done: doneReading } = await reader.read();
+                    done = doneReading;
+                    const chunkValue = decoder.decode(value, { stream: !done });
+                    turnContent += chunkValue;
+                    updateLastMessageContent(turnContent);
 
-            // Execute any tool calls requested by the AI
-            const toolCalls = ToolService.parseToolCalls(fullContent);
-            for (const tool of toolCalls) {
-                try {
-                    console.log(`[Agent] Automatically executing tool: ${tool.description}`);
-                    await ToolService.execute(tool);
-                } catch (err) {
-                    console.error(`[Agent] Tool execution failed: ${err}`);
+                    // Extract plan as it streams
+                    if (!planExtracted && turnContent.includes('</bolt_plan>')) {
+                        const steps = extractPlanSteps(turnContent);
+                        if (steps.length > 0) {
+                            setPlanSteps(steps);
+                            planExtracted = true;
+                            updatePlanStep(steps[0].id, { status: 'in-progress' });
+                        }
+                    }
+
+                    // Incremental file parsing
+                    const changes = parseAIResponse(turnContent);
+                    if (changes && changes.length > 0) {
+                        changes.forEach((change: any) => {
+                            useBuilderStore.getState().setPendingFile(change.path, change.content);
+                        });
+                    }
                 }
-            }
 
-            // AUTO-START logic: If this was a build task, signal the editor to run
-            if (mode === 'build' || (messages.length < 5 && changes.length > 2)) {
-                console.log('[Agent] Project architected. Auto-starting preview...');
-                window.dispatchEvent(new CustomEvent('bolt-project-ready'));
-            }
+                // Final turn processing
+                const steps = extractPlanSteps(turnContent);
+                if (steps.length > 0) {
+                    setPlanSteps(steps.map(s => ({ ...s, status: 'completed' })));
+                }
 
-            // AUTO-SAVE LOGIC
-            // Note: We use the latest messages including the AI's response
-            // We use useBuilderStore.getState().files to ensure we get the updated files state after upserts
-            const currentFiles = useBuilderStore.getState().files;
-            const updatedMessages = [...messages, userMessage, { role: 'assistant' as const, content: fullContent }];
+                // Process tool calls
+                const toolCalls = ToolService.parseToolCalls(turnContent);
+                if (toolCalls.length > 0) {
+                    console.log(`[Agent Loop] turn ${turns}: Found ${toolCalls.length} tool calls...`);
+                    let toolResultsContext = "\n\n**ENVIRONMENT DATA RETRIEVED:**\n";
+                    for (const tool of toolCalls) {
+                        try {
+                            const result = await ToolService.execute(tool);
+                            toolResultsContext += `\n> [Tool: ${tool.description}]\n${result}\n`;
+                        } catch (err) {
+                            toolResultsContext += `\n> [Tool Error: ${tool.description}]\n${err}\n`;
+                        }
+                    }
 
-            autoSaveProject(currentProjectName, currentFiles, updatedMessages);
+                    const toolMessage = { role: 'system' as const, content: toolResultsContext };
+                    addMessage(toolMessage);
 
-            // Signal fix completion
-            if (mode === 'fix' && changes && changes.length > 0) {
-                setTimeout(() => {
-                    window.dispatchEvent(new CustomEvent('bolt-fix-complete'));
-                }, 1000); // Small delay to let UI settle
+                    // Update messages for next turn
+                    currentMessages = [...currentMessages, { role: 'assistant', content: turnContent }, toolMessage];
+                    hasMoreThinking = true;
+                } else {
+                    hasMoreThinking = false;
+
+                    // Final finish
+                    const changes = parseAIResponse(turnContent);
+                    if (mode === 'build' || (messages.length < 5 && changes.length > 2)) {
+                        window.dispatchEvent(new CustomEvent('bolt-project-ready'));
+                    }
+
+                    const currentFiles = useBuilderStore.getState().files;
+                    autoSaveProject(projectName, currentFiles, [...currentMessages, { role: 'assistant', content: turnContent }]);
+                }
             }
 
         } catch (error) {

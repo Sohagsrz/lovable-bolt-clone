@@ -1,7 +1,7 @@
 import { getWebContainer } from '@/lib/webcontainer';
 
 export interface ToolAction {
-    type: 'shell' | 'file' | 'search' | 'npm' | 'readDir' | 'find' | 'webRead';
+    type: 'shell' | 'file' | 'search' | 'npm' | 'readDir' | 'find' | 'webRead' | 'webSearch';
     content: string;
     description: string;
 }
@@ -53,11 +53,40 @@ export class ToolService {
                 return await this.executeShell(`find . -maxdepth 4 -name "${action.content}"`);
             case 'webRead':
                 try {
-                    const res = await fetch(action.content);
-                    const html = await res.text();
+                    const res = await fetch('/api/proxy', {
+                        method: 'POST',
+                        body: JSON.stringify({ url: action.content }),
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+
+                    const data = await res.json();
+                    if (data.error) throw new Error(data.error);
+
+                    const text = data.content;
+                    const contentType = data.contentType;
+
+                    if (contentType?.includes('application/json')) {
+                        try {
+                            return `[JSON Data]\n\`\`\`json\n${JSON.stringify(JSON.parse(text), null, 2).substring(0, 8000)}\n\`\`\``;
+                        } catch (e) { return text.substring(0, 8000); }
+                    }
+
                     // Basic HTML stripper for cleaner AI context
-                    return html.replace(/<[^>]*>?/gm, '').substring(0, 5000);
-                } catch (e) { return `[Web Error] Could not fetch URL: ${action.content}`; }
+                    const cleanText = text
+                        .replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gim, '') // Remove scripts
+                        .replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gim, '')   // Remove styles
+                        .replace(/<[^>]*>?/gm, '')                            // Remove tags
+                        .replace(/\s+/g, ' ')                                 // Collapse whitespace
+                        .trim();
+
+                    return cleanText.substring(0, 8000);
+                } catch (e: any) { return `[Web Error] Could not fetch URL via proxy: ${e.message}`; }
+            case 'webSearch':
+                try {
+                    const res = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(action.content)}&format=json`);
+                    const data = await res.json();
+                    return `[Search Results for "${action.content}"]\nAbstract: ${data.AbstractText}\nResults: ${data.RelatedTopics?.slice(0, 3).map((t: any) => t.Text).join('\n')}`;
+                } catch (e) { return `[Search Error] Could not perform search: ${action.content}`; }
             default:
                 throw new Error(`Unknown tool type: ${action.type}`);
         }
