@@ -102,8 +102,6 @@ export const EditorPane = () => {
             const pendingChanges = files.filter(f => lastSyncedRef.current[f.path] !== f.content);
             if (pendingChanges.length === 0) return;
 
-            console.log(`[WebContainer] Seeding ${pendingChanges.length} modified files...`);
-
             for (const file of pendingChanges) {
                 const parts = file.path.split('/');
                 if (parts.length > 1) {
@@ -112,8 +110,6 @@ export const EditorPane = () => {
                 await wc.fs.writeFile(file.path, file.content);
                 lastSyncedRef.current[file.path] = file.content;
             }
-
-            console.log('[WebContainer] Seeding complete');
         } catch (err) {
             console.error('[WebContainer] Seeding failed:', err);
         }
@@ -190,19 +186,27 @@ export const EditorPane = () => {
         return () => window.removeEventListener('bolt-project-ready', handleProjectReady);
     }, [runProject]);
 
+    const lastTriggeredContentRef = useRef<string>('');
+
     // AUTO-RUN ON CHANGES (Accepted AI suggestions or manual edits)
     useEffect(() => {
         if (files.length > 0 && !isRunning) {
+            // Only trigger if content actually changed (avoid reference-change noise)
+            const currentHash = files.map(f => f.path + f.content.length).join('|');
+            if (currentHash === lastTriggeredContentRef.current) return;
+
             const timer = setTimeout(() => {
-                // Only auto-run if we have an active terminal and shell
-                if (shellsRef.current[activeTerminalId]) {
-                    console.log('[AutoRun] Changes detected. Restarting dev server...');
+                // Double check if we still have changes vs what was last run
+                if (currentHash !== lastTriggeredContentRef.current && shellsRef.current[activeTerminalId]) {
+                    console.log('[AutoRun] Real changes detected. Refreshing dev server...');
+                    lastTriggeredContentRef.current = currentHash;
                     runProject();
                 }
-            }, 5000); // Wait 5s after changes to avoid sync conflicts
+            }, 3000);
+
             return () => clearTimeout(timer);
         }
-    }, [files, runProject, activeTerminalId]);
+    }, [files, activeTerminalId, isRunning, runProject]);
 
     return (
         <div className="flex flex-col h-full bg-[#0a0a0c] overflow-hidden">
