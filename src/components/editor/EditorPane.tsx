@@ -91,81 +91,79 @@ export const EditorPane = () => {
         };
     }, []);
 
-    // Sync changes to WebContainer with Debounce to prevent WASM OOM
-    useEffect(() => {
-        let timeoutId: NodeJS.Timeout;
+    const seedFiles = useCallback(async () => {
+        try {
+            const wc = await getWebContainer();
+            if (files.length === 0) return;
 
-        const syncFiles = async () => {
-            try {
-                const wc = await getWebContainer();
-                if (files.length === 0) return;
+            const pendingChanges = files.filter(f => lastSyncedRef.current[f.path] !== f.content);
+            if (pendingChanges.length === 0) return;
 
-                const pendingChanges = files.filter(f => lastSyncedRef.current[f.path] !== f.content);
-                if (pendingChanges.length === 0) return;
+            console.log(`[WebContainer] Seeding ${pendingChanges.length} modified files...`);
 
-                console.log(`[WebContainer] Syncing ${pendingChanges.length} modified files...`);
-
-                for (const file of pendingChanges) {
-                    const parts = file.path.split('/');
-                    if (parts.length > 1) {
-                        await wc.fs.mkdir(parts.slice(0, -1).join('/'), { recursive: true });
-                    }
-                    await wc.fs.writeFile(file.path, file.content);
-                    lastSyncedRef.current[file.path] = file.content;
+            for (const file of pendingChanges) {
+                const parts = file.path.split('/');
+                if (parts.length > 1) {
+                    await wc.fs.mkdir(parts.slice(0, -1).join('/'), { recursive: true });
                 }
-
-                console.log('[WebContainer] Sync complete');
-            } catch (err) {
-                console.error('[WebContainer] Sync failed:', err);
+                await wc.fs.writeFile(file.path, file.content);
+                lastSyncedRef.current[file.path] = file.content;
             }
-        };
 
-        timeoutId = setTimeout(syncFiles, 1000); // 1s debounce to be safer
-        return () => clearTimeout(timeoutId);
+            console.log('[WebContainer] Seeding complete');
+        } catch (err) {
+            console.error('[WebContainer] Seeding failed:', err);
+        }
     }, [files]);
+
+    // Background sync effect
+    useEffect(() => {
+        const timeoutId = setTimeout(seedFiles, 1000);
+        return () => clearTimeout(timeoutId);
+    }, [files, seedFiles]);
 
     const runProject = useCallback(async () => {
         setIsRunning(true);
         try {
-            const wc = await getWebContainer();
-            let activeShell = shellsRef.current[activeTerminalId];
+            await seedFiles(); // Ensure files are fresh before running
 
-            // If shell doesn't exist or has exited, we need to re-initialize it
-            if (!activeShell || activeShell.exit.then(() => true, () => true)) {
-                console.log('[Run] Shell dead or missing. Attempting to re-spawn...');
-                // This is tricky because the Terminal component owns the initialization.
-                // We can trigger a re-mount or notify the terminal component.
-                // For now, let's just log and try to find a way to re-spawn.
-                // Actually, we can try to spawn a fresh one here if we have the terminal cols/rows
+            // Poll for active shell if missing (wait for terminal initialization)
+            let activeShell = shellsRef.current[activeTerminalId];
+            let retries = 0;
+            while (!activeShell && retries < 10) {
+                console.log(`[Run] Waiting for terminal shell... (Attempt ${retries + 1})`);
+                await new Promise(r => setTimeout(r, 500));
+                activeShell = shellsRef.current[activeTerminalId];
+                retries++;
             }
 
             if (activeShell) {
                 try {
                     const writer = activeShell.input.getWriter();
-                    // Send Ctrl+C first to clear any running process
-                    await writer.write('\x03'); // Ctrl+C
-                    await new Promise(r => setTimeout(r, 200));
+                    await writer.write('\x03'); // Ctrl+C to kill previous
+                    await new Promise(r => setTimeout(r, 300));
                     await writer.write('npm run dev\n');
                     writer.releaseLock();
+                    console.log('[Run] Started dev server');
                 } catch (e) {
                     console.error('[Run] Failed to write to shell input:', e);
-                    // If writing failed, the process is likely dead
                     delete shellsRef.current[activeTerminalId];
                 }
             } else {
-                console.warn('[Run] No active shell found. Please wait for terminal to initialize.');
+                console.error('[Run] Could not find an active shell after retries.');
             }
         } catch (err) {
             console.error('Run failed:', err);
         } finally {
             setIsRunning(false);
         }
-    }, [activeTerminalId]);
+    }, [activeTerminalId, seedFiles]);
 
     useEffect(() => {
-        const handleProjectReady = () => {
+        const handleProjectReady = async () => {
             console.log('[Editor] Project Ready Signal Received. Auto-starting...');
             setShowTerminal(true);
+            await seedFiles(); // Ensure files are seeded before running
             runProject();
         };
 
