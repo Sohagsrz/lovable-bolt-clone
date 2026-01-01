@@ -128,17 +128,32 @@ export const EditorPane = () => {
         setIsRunning(true);
         try {
             const wc = await getWebContainer();
-            // Start the dev server in the active terminal
-            const activeShell = shellsRef.current[activeTerminalId];
+            let activeShell = shellsRef.current[activeTerminalId];
+
+            // If shell doesn't exist or has exited, we need to re-initialize it
+            if (!activeShell || activeShell.exit.then(() => true, () => true)) {
+                console.log('[Run] Shell dead or missing. Attempting to re-spawn...');
+                // This is tricky because the Terminal component owns the initialization.
+                // We can trigger a re-mount or notify the terminal component.
+                // For now, let's just log and try to find a way to re-spawn.
+                // Actually, we can try to spawn a fresh one here if we have the terminal cols/rows
+            }
+
             if (activeShell) {
-                const writer = activeShell.input.getWriter();
-                // Send Ctrl+C first to clear any running process, then start dev
-                await writer.write('\x03'); // Ctrl+C
-                await new Promise(r => setTimeout(r, 100));
-                await writer.write('npm run dev\n');
-                writer.releaseLock();
+                try {
+                    const writer = activeShell.input.getWriter();
+                    // Send Ctrl+C first to clear any running process
+                    await writer.write('\x03'); // Ctrl+C
+                    await new Promise(r => setTimeout(r, 200));
+                    await writer.write('npm run dev\n');
+                    writer.releaseLock();
+                } catch (e) {
+                    console.error('[Run] Failed to write to shell input:', e);
+                    // If writing failed, the process is likely dead
+                    delete shellsRef.current[activeTerminalId];
+                }
             } else {
-                console.warn('[Run] No active shell found for terminal:', activeTerminalId);
+                console.warn('[Run] No active shell found. Please wait for terminal to initialize.');
             }
         } catch (err) {
             console.error('Run failed:', err);
