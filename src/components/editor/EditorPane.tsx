@@ -112,6 +112,12 @@ export const EditorPane = () => {
             const pendingChanges = files.filter(f => lastSyncedRef.current[f.path] !== f.content);
             if (pendingChanges.length === 0) return;
 
+            // Get terminal for logging
+            const term = activeTerminalId ? (window as any)[`term_${activeTerminalId}`] : null;
+            if (term && pendingChanges.length > 2) {
+                term.writeln(`\x1b[1;30m[BOLT-FS] Syncing ${pendingChanges.length} files to engine...\x1b[0m`);
+            }
+
             for (const file of pendingChanges) {
                 const parts = file.path.split('/');
                 if (parts.length > 1) {
@@ -119,12 +125,20 @@ export const EditorPane = () => {
                 }
                 await wc.fs.writeFile(file.path, file.content);
                 lastSyncedRef.current[file.path] = file.content;
+
+                if (term && pendingChanges.length <= 2) {
+                    term.writeln(`\x1b[1;30m[BOLT-FS] Refreshed: ${file.path}\x1b[0m`);
+                }
+            }
+
+            if (term && pendingChanges.length > 2) {
+                term.writeln(`\x1b[1;32m✔ Project Synchronized\x1b[0m`);
             }
 
         } catch (err) {
             console.error('[WebContainer] Seeding failed:', err);
         }
-    }, [files]);
+    }, [files, activeTerminalId]);
 
     // Background sync effect
     useEffect(() => {

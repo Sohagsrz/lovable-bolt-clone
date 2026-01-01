@@ -153,6 +153,7 @@ export const ChatPane = () => {
             let turns = 0;
             const maxTurns = 3;
             let lastTurnContent = '';
+            let materialityProduced = false; // Persistent flag for the entire operation
 
             const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -273,9 +274,10 @@ STRICT RULE: STOP TALKING. START BUILDING. MATERIALIZE THE ARCHITECTURE NOW.`;
                     setPlanSteps(steps.map(s => ({ ...s, status: 'completed' })));
                 }
 
-                // Apply file changes (IMPORTANT: This was missing!)
+                // Apply file changes
                 const changes = parseAIResponse(turnContent);
                 if (changes.length > 0) {
+                    materialityProduced = true;
                     const { upsertFile } = useBuilderStore.getState();
                     changes.forEach(change => {
                         upsertFile(change.path, change.content);
@@ -285,6 +287,7 @@ STRICT RULE: STOP TALKING. START BUILDING. MATERIALIZE THE ARCHITECTURE NOW.`;
                 // Process tool calls
                 const toolCalls = ToolService.parseToolCalls(turnContent);
                 if (toolCalls.length > 0) {
+                    materialityProduced = true;
                     console.log(`[Agent Loop] turn ${turns}: Found ${toolCalls.length} tool calls...`);
                     let toolResultsContext = "\n\n**ENVIRONMENT DATA RETRIEVED:**\n";
                     for (const tool of toolCalls) {
@@ -305,16 +308,21 @@ STRICT RULE: STOP TALKING. START BUILDING. MATERIALIZE THE ARCHITECTURE NOW.`;
                     // Add a professional deliberate delay for user readability (Deep Pacing)
                     await sleep(4500);
                     hasMoreThinking = true;
-                } else if ((mode === 'build' || mode === 'fix') && turns <= 3 && changes.length === 0 && toolCalls.length === 0) {
-                    // CRITICAL SELF-CORRECTION
+                    hasMoreThinking = true;
+                } else if ((mode === 'build' || mode === 'fix') && turns < 3 && !materialityProduced) {
+                    // CRITICAL SELF-CORRECTION (Only if NO progress was made yet)
+                    const hasAttemptedFormat = turnContent.includes('FILE:') || turnContent.includes('bolt_tool');
+
                     const nudgeMessage = {
                         role: 'system' as const,
-                        content: "[URGENT ADVISORY]: Materiality mandatory. Start building now."
+                        content: hasAttemptedFormat
+                            ? "[FORMATTING ADVISORY]: Action detected but parser failed. Use exactly: ### FILE: path \\n ```code...``` or <bolt_tool type=\"...\">desc \\n content</bolt_tool>"
+                            : "[URGENT ADVISORY]: Materiality mandatory. Start building now with tools or code blocks."
                     };
                     addMessage(nudgeMessage);
                     currentMessages = [...currentMessages, { role: 'assistant', content: turnContent }, nudgeMessage];
 
-                    await sleep(3000);
+                    await sleep(3500);
                     hasMoreThinking = true;
                 } else if (turnContent === lastTurnContent && turns > 1) {
                     // Loop prevention
