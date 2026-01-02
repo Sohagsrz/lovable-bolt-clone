@@ -8,14 +8,14 @@ Bolt Studio is an advanced, AI-powered IDE and application builder inspired by B
 
 ### ✅ Ready & Implemented
 - **AI Architect Core**: Describes and builds full-stack React applications from scratch.
+- **Conversational Intelligence**: Intelligent 'Chat' mode default allows for technical discourse without forced code execution.
 - **Architectural Pacing**: Elite, deliberate cadence (4.5s inter-turn delay) for maximum observability and reasoning clarity.
-- **Elite Kinematics**: High-fidelity UI motion powered by Framer Motion, including layout-synchronized transitions and kinetic feedback.
+- **Elite Kinematics**: High-fidelity UI motion powered by Framer Motion, including layout-synchronized transitions.
 - **Integrated Terminal (XTerm)**: Real-time log streaming for AI-initiated commands and fully interactive user shell.
-- **Recursive Workspace Maintenance**: Advanced folder management in the Live Explorer with recursive deletion and state-synchronized cleanup.
-- **Interactive Execution Plan**: Bolt-style planning pane that shows step-by-step progress before implementation.
-- **Credit Protection (Nonce System)**: Consolidated billing using `X-Operation-Nonce`, charging only one credit per user-initiated operation regardless of turns.
-- **Live WebContainer Integration**: Runs Node.js applications directly in your browser with no local setup.
-- **Auto-Fix Loop**: Automatically detects terminal errors and prompts the AI to fix them immediately.
+- **Structural Asset Support**: Direct integration with placehold.co and Unsplash for high-fidelity visual scaffolding.
+- **Recursive Workspace Maintenance**: Advanced folder management in the Live Explorer with state-synchronized cleanup.
+- **Interactive Execution Plan**: Bolt-style planning pane that shows step-by-step progress.
+- **Credit Protection (Nonce System)**: Consolidated billing using `X-Operation-Nonce`.
 - **Streaming AI Responses**: Real-time code generation using Server-Sent Events (SSE).
 - **Project Persistence**: Saves your projects, messages, and files to a database via Prisma + PostgreSQL.
 
