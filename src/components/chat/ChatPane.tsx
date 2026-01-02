@@ -12,7 +12,7 @@ import { ToolService } from '@/services/ToolService';
 
 import { useRouter } from "next/navigation";
 
-type AgentMode = 'build' | 'fix' | 'refactor' | 'ui' | 'deploy';
+type AgentMode = 'chat' | 'build' | 'fix' | 'refactor' | 'ui' | 'deploy';
 
 /**
  * Clean internal AI architecture payloads while preserving the narrative
@@ -70,7 +70,7 @@ export const ChatPane = () => {
         restoreCheckpoint, deleteCheckpoint, activeFile
     } = useBuilderStore();
     const [input, setInput] = useState('');
-    const [mode, setMode] = useState<AgentMode>('build');
+    const [mode, setMode] = useState<AgentMode>('chat');
     const [lastError, setLastError] = useState<string | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const abortRef = useRef<AbortController | null>(null);
@@ -163,6 +163,7 @@ export const ChatPane = () => {
             while (hasMoreThinking && turns < maxTurns) {
                 turns++;
                 const projectContext = generateProjectIndex(files);
+                const isChat = mode === 'chat';
                 const systemPrompt = `You are BOLT STUDIO, an elite AI architectural engineer and UI/UX designer. Your mission is to build stunning, production-ready web applications that redefine modern aesthetics.
 
 # ENVIRONMENT & STATE:
@@ -174,26 +175,24 @@ export const ChatPane = () => {
 1. **Visual WOW**: Use curated HSL palettes, glassmorphism (backdrop-blur), and sophisticated dark modes.
 2. **Typography**: Force modern fonts (Inter, Outfit) with intentional tracking/leading.
 3. **Motion**: Mandatory micro-animations and smooth transitions (Framer Motion preferred).
-4. **Assets**: No broken placeholders. Use Unsplash.
-5. **Quality**: Semantic HTML5, explicit SEO tagging, and baseline accessibility.
+4. **Quality**: Semantic HTML5, explicit SEO tagging, and baseline accessibility.
 
 # EXECUTION PROTOCOL (MANDATORY):
 1. **Summary**: Professional technical rationale.
 2. **Plan**: ALWAYS wrap in <bolt_plan> with <step /> tags. Do NOT skip this.
-3. **Action**: Start implementation IMMEDIATELY. Prioritize creating the file structure using "### FILE: path" blocks.
-4. **Files-First Scaffolding**: For new projects, materialize the core application code before running terminal commands. This ensures the IDE remains responsive and informative.
+3. **Action**: ${isChat ? 'Answer questions professionally. Only build if requested.' : 'Start implementation IMMEDIATELY. Prioritize creating the file structure using "### FILE: path" blocks.'}
+4. **Files-First Scaffolding**: For new projects, materialize the core application code before running terminal commands.
 
 # SYSTEM CONTEXT PROTOCOL:
-1. **MATERIAL VOLITION**: Narrative descriptions without accompanying tool calls or code blocks are defined as a MISSION FAILURE. You must lead with action.
+1. **MATERIAL VOLITION**: ${isChat ? 'Provide helpful text responses.' : 'Narrative descriptions without accompanying tool calls or code blocks are defined as a MISSION FAILURE. You must lead with action.'}
 2. **ZERO-WAITING**: Do not ask for user confirmation. Proceed immediately to implementation.
-3. **LEAD ENGINEER MANDATE**: You are the architect. Make the most elite technical decisions. Prioritize high-fidelity code generation.
+3. **LEAD ENGINEER MANDATE**: You are the architect. Make the most elite technical decisions.
 
 # FORMATTING MANDATE:
-- Rationales: Concise and professional.
-- Implementation: Use <bolt_tool> for all shell/npm actions. Use "### FILE: path" for code.
+- Implementation: Use "### FILE: path" for code.
 - Plan: Wrap the initial strategy in <bolt_plan>.
 
-STRICT RULE: STOP TALKING. START BUILDING. MATERIALIZE THE ARCHITECTURE NOW.`;
+${isChat ? 'STRICT RULE: Focus on high-quality conversation and technical advice. Do not force code implementation unless asked.' : 'STRICT RULE: STOP TALKING. START BUILDING. MATERIALIZE THE ARCHITECTURE NOW.'}`;
 
                 currentMessages[0].content = systemPrompt;
 
@@ -412,6 +411,7 @@ STRICT RULE: STOP TALKING. START BUILDING. MATERIALIZE THE ARCHITECTURE NOW.`;
     }, [messages, files]);
 
     const modes = [
+        { id: 'chat', icon: Bot, label: 'Chat' },
         { id: 'build', icon: Wand2, label: 'Build' },
         { id: 'fix', icon: Shield, label: 'Fix' },
         { id: 'refactor', icon: Zap, label: 'Refactor' },
