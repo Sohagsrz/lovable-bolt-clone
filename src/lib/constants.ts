@@ -1,48 +1,48 @@
 export const DEFAULT_PROJECT_FILES = [
-    {
-        path: 'package.json',
-        type: 'file',
-        content: JSON.stringify({
-            name: 'bolt-app',
-            private: true,
-            version: '0.0.0',
-            type: 'module',
-            scripts: {
-                dev: 'vite',
-                build: 'vite build',
-                preview: 'vite preview'
-            },
-            dependencies: {
-                react: '^18.2.0',
-                'react-dom': '^18.2.0',
-                'lucide-react': '^0.294.0',
-                'framer-motion': '^10.16.4'
-            },
-            devDependencies: {
-                '@types/react': '^18.2.37',
-                '@types/react-dom': '^18.2.15',
-                '@vitejs/plugin-react': '^4.2.0',
-                vite: '^5.0.0',
-                autoprefixer: '^10.4.16',
-                postcss: '^8.4.31',
-                tailwindcss: '^3.3.5'
-            }
-        }, null, 2)
-    },
-    {
-        path: 'vite.config.ts',
-        type: 'file',
-        content: `import { defineConfig } from 'vite'
+  {
+    path: 'package.json',
+    type: 'file',
+    content: JSON.stringify({
+      name: 'bolt-app',
+      private: true,
+      version: '0.0.0',
+      type: 'module',
+      scripts: {
+        dev: 'vite',
+        build: 'vite build',
+        preview: 'vite preview'
+      },
+      dependencies: {
+        react: '^18.2.0',
+        'react-dom': '^18.2.0',
+        'lucide-react': '^0.294.0',
+        'framer-motion': '^10.16.4'
+      },
+      devDependencies: {
+        '@types/react': '^18.2.37',
+        '@types/react-dom': '^18.2.15',
+        '@vitejs/plugin-react': '^4.2.0',
+        vite: '^5.0.0',
+        autoprefixer: '^10.4.16',
+        postcss: '^8.4.31',
+        tailwindcss: '^3.3.5'
+      }
+    }, null, 2)
+  },
+  {
+    path: 'vite.config.ts',
+    type: 'file',
+    content: `import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
 })`
-    },
-    {
-        path: 'index.html',
-        type: 'file',
-        content: `<!DOCTYPE html>
+  },
+  {
+    path: 'index.html',
+    type: 'file',
+    content: `<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -58,11 +58,11 @@ export default defineConfig({
     <script src="/bolt-inspector.js"></script>
   </body>
 </html>`
-    },
-    {
-        path: 'src/main.tsx',
-        type: 'file',
-        content: `import React from 'react'
+  },
+  {
+    path: 'src/main.tsx',
+    type: 'file',
+    content: `import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
@@ -72,11 +72,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <App />
   </React.StrictMode>,
 )`
-    },
-    {
-        path: 'src/index.css',
-        type: 'file',
-        content: `@tailwind base;
+  },
+  {
+    path: 'src/index.css',
+    type: 'file',
+    content: `@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -86,19 +86,28 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }`
-    },
-    {
-        path: 'src/App.tsx',
-        type: 'file',
-        content: `import React from 'react';
+  },
+  {
+    path: 'src/App.tsx',
+    type: 'file',
+    content: `import React from 'react';
 import { Sparkles, Rocket, Shield, Zap } from 'lucide-react';
 
 function App() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center">
-      <div className="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center text-white mb-8 shadow-2xl shadow-indigo-600/40 animate-bounce">
-        <Rocket className="w-10 h-10" />
+      <div className="relative mb-8">
+        <div className="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-indigo-600/40 animate-bounce relative z-10">
+          <Rocket className="w-10 h-10" />
+        </div>
+        <div className="absolute -inset-4 bg-indigo-500/20 blur-2xl rounded-full animate-pulse" />
       </div>
+
+      <img 
+        src="https://placehold.co/600x400/1e1b4b/6366f1?text=ARCHITECT+MATERIALIZED" 
+        alt="Project Baseline" 
+        className="w-full max-w-lg h-48 object-cover rounded-3xl mb-12 border border-white/10 shadow-2xl opacity-50 grayscale hover:grayscale-0 transition-all duration-700"
+      />
       
       <h1 className="text-5xl font-black mb-4 tracking-tighter">
         BOLT <span className="text-indigo-500">STUDIO</span>
@@ -125,5 +134,5 @@ function App() {
 }
 
 export default App;`
-    }
+  }
 ];

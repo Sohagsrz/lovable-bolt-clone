@@ -175,7 +175,8 @@ export const ChatPane = () => {
 1. **Visual WOW**: Use curated HSL palettes, glassmorphism (backdrop-blur), and sophisticated dark modes.
 2. **Typography**: Force modern fonts (Inter, Outfit) with intentional tracking/leading.
 3. **Motion**: Mandatory micro-animations and smooth transitions (Framer Motion preferred).
-4. **Quality**: Semantic HTML5, explicit SEO tagging, and baseline accessibility.
+4. **Assets**: No broken placeholders. Use Unsplash for high-fidelity or placehold.co for structural assets.
+5. **Quality**: Semantic HTML5, explicit SEO tagging, and baseline accessibility.
 
 # EXECUTION PROTOCOL (MANDATORY):
 1. **Summary**: Professional technical rationale.
