@@ -69,8 +69,8 @@ import { DEFAULT_PROJECT_FILES } from '@/lib/constants';
 export const useBuilderStore = create<BuilderState>((set, get) => ({
     projectId: null,
     projectName: 'New Project',
-    files: [],
-    activeFile: null,
+    files: DEFAULT_PROJECT_FILES as FileNode[],
+    activeFile: 'src/App.tsx',
     messages: [
         {
             role: 'assistant',
@@ -259,14 +259,14 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     reset: () => set({
         projectId: null,
         projectName: 'New Project',
-        files: [],
+        files: DEFAULT_PROJECT_FILES as FileNode[],
         messages: [
             {
                 role: 'assistant',
                 content: "Welcome to Bolt Studio! Ready for a fresh start. What are we architecting?",
             },
         ],
-        activeFile: null,
+        activeFile: 'src/App.tsx',
         isGenerating: false,
         currentPlan: null,
         planSteps: [],
